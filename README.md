@@ -48,8 +48,11 @@ mix compile
 
 Then in IEx:
 
+```bash
+iex -S mix run
+```
+
 ```elixir
-iex -S mix
 Microgptex.run()
 ```
 
@@ -114,6 +117,16 @@ for each step:
   grads = Value.backward(loss)          # reverse pass, produces gradient map
   {opt, updates} = Adam.step(opt, params, grads, lr)
   model = Model.update_params(model, updates)
+```
+
+## Interactive Walkthrough
+
+An interactive [Livebook](https://livebook.dev/) notebook walks through the entire
+algorithm step by step — autograd, tokenization, attention, training, and sampling —
+with executable code cells:
+
+```
+notebooks/walkthrough.livemd
 ```
 
 ## Credits

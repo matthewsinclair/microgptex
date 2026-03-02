@@ -3,7 +3,7 @@ verblock: "02 Mar 2026:v0.1: matts - Initial version"
 wp_id: WP-07
 title: "LiveBook Walkthrough"
 scope: Large
-status: Not Started
+status: Done
 ---
 
 # WP-07: LiveBook Walkthrough

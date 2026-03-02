@@ -8,10 +8,8 @@
 - [x] WP-04: Socratic code review — CTO/Tech Lead dialog comparing Elixir vs Python approaches, all findings fixed
 - [x] WP-05: Public repo polish — README for public consumption, removed reference implementation files
 
-## Remaining
-
-- [ ] WP-06: Rich moduledoc text — dual-audience `@moduledoc` explaining both GPT concepts and Elixir idioms
-- [ ] WP-07: LiveBook walkthrough — interactive notebook in growingswe.com/blog/microgpt style
+- [x] WP-06: Rich moduledoc text — dual-audience `@moduledoc` explaining both GPT concepts and Elixir idioms
+- [x] WP-07: LiveBook walkthrough — interactive notebook in growingswe.com/blog/microgpt style
 
 ## Quality Gates
 

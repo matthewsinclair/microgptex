@@ -1,0 +1,701 @@
+# MicroGPTEx: How GPT Works, from Scratch
+
+```elixir
+Mix.install([
+  {:microgptex, path: Path.join(__DIR__, "..")}
+])
+```
+
+## Introduction
+
+This notebook walks through the complete GPT training algorithm as implemented in
+MicroGPTEx — a pure Elixir translation of
+[Andrej Karpathy's MicroGPT](https://github.com/karpathy/microgpt).
+
+We'll build understanding from the bottom up, the same way the code is organized:
+
+1. **Automatic differentiation** — how the model learns from its mistakes
+2. **Tokenization** — converting text to numbers
+3. **Math building blocks** — the operations that make up neural network layers
+4. **The GPT model** — multi-head attention, embeddings, and the forward pass
+5. **Training** — cross-entropy loss, backpropagation, and the Adam optimizer
+6. **Sampling** — generating new text, one character at a time
+
+Every code cell is executable. Change values, re-run, and see what happens.
+
+## Chapter 1: Automatic Differentiation
+
+The fundamental question of training is: *if I change this weight slightly,
+how much does the loss change?* The answer is the **gradient** — the derivative
+of the loss with respect to that weight. Autograd computes all these gradients
+automatically by tracking every operation in a computation graph.
+
+### Building the graph
+
+Every number in the network is a `Value` node. When you add or multiply two Values,
+you get a new Value that remembers where it came from:
+
+```elixir
+alias Microgptex.Value, as: V
+
+a = V.leaf(3.0, :a)
+b = V.leaf(4.0, :b)
+c = V.mul(a, b)
+
+IO.puts("a = #{a.data}")
+IO.puts("b = #{b.data}")
+IO.puts("a * b = #{c.data}")
+IO.puts("c remembers its children: #{length(c.children)} inputs")
+IO.puts("c stores local gradients: #{inspect(c.local_grads)}")
+```
+
+The `local_grads` field is the key to autograd. For multiplication, `d(a*b)/da = b`
+and `d(a*b)/db = a`. These chain rule factors are computed eagerly during the forward
+pass and stored on the node — ready for the backward pass.
+
+### Forward: building an expression
+
+Let's build a slightly more complex expression and see the forward pass in action.
+This is the kind of computation that happens inside a neural network: weighted sums,
+nonlinearities, and composition.
+
+```elixir
+# A tiny "neuron": weighted sum + relu activation
+x = V.leaf(2.0, :x)
+w1 = V.leaf(0.5, :w1)
+w2 = V.leaf(-0.3, :w2)
+
+# weighted sum: w1*x + w2
+weighted = V.add(V.mul(w1, x), w2)
+# relu activation: max(0, weighted)
+output = V.relu(weighted)
+
+IO.puts("x = #{x.data}")
+IO.puts("w1*x + w2 = #{weighted.data}")
+IO.puts("relu(w1*x + w2) = #{output.data}")
+```
+
+### Backward: computing gradients
+
+Now the magic. Given an output node, `backward/1` traverses the graph in reverse
+topological order and computes `d(output)/d(every_node)`:
+
+```elixir
+grads = V.backward(output)
+
+IO.puts("d(output)/d(x)  = #{grads[:x]}")
+IO.puts("d(output)/d(w1) = #{grads[:w1]}")
+IO.puts("d(output)/d(w2) = #{grads[:w2]}")
+```
+
+These gradients tell us: if we increase `w1` by a tiny amount, the output increases
+by `grads[:w1]` times that amount. This is exactly what the optimizer needs to
+decide how to adjust each weight.
+
+### Fan-out: the same value used twice
+
+What happens when a value is used in multiple places? The gradients must **accumulate**.
+If `a` appears twice in the expression, its gradient is the sum of the gradients from
+both uses:
+
+```elixir
+a = V.leaf(3.0, :a)
+
+# a * a = a^2, so d/da should be 2*a = 6.0
+result = V.mul(a, a)
+grads = V.backward(result)
+
+IO.puts("a * a = #{result.data}")
+IO.puts("d(a*a)/da = #{grads[:a]} (expected: #{2 * a.data})")
+```
+
+In Python's micrograd, this accumulation happens via `+=` on mutable `.grad` fields.
+In Elixir, `backward/1` returns an immutable `%{id => gradient}` map, and
+accumulation is explicit via `Map.update/4`. Same math, different data model.
+
+### Verifying gradients
+
+We can verify autograd by comparing against numerical differentiation — the
+"bump test". Nudge a value by a tiny epsilon and measure how the output changes:
+
+```elixir
+epsilon = 1.0e-5
+
+a = V.leaf(2.0, :a)
+b = V.leaf(3.0, :b)
+expr = fn a, b -> V.add(V.mul(a, b), V.pow(a, 2)) end
+
+# Autograd gradient
+grads = V.backward(expr.(a, b))
+autograd_da = grads[:a]
+
+# Numerical gradient: (f(a+eps) - f(a-eps)) / (2*eps)
+f_plus = expr.(V.leaf(2.0 + epsilon, :a), b).data
+f_minus = expr.(V.leaf(2.0 - epsilon, :a), b).data
+numerical_da = (f_plus - f_minus) / (2 * epsilon)
+
+IO.puts("d/da of (a*b + a^2) at a=2, b=3:")
+IO.puts("  autograd:  #{autograd_da}")
+IO.puts("  numerical: #{numerical_da}")
+IO.puts("  match: #{abs(autograd_da - numerical_da) < 1.0e-6}")
+```
+
+## Chapter 2: Tokenization
+
+Before a neural network can process text, we need to convert characters into numbers.
+Our tokenizer is character-level: each unique character gets an integer ID, and a
+special BOS (beginning-of-sequence) token marks the start and end of each name.
+
+```elixir
+alias Microgptex.Tokenizer
+
+tok = Tokenizer.build(["alice", "bob", "charlie"])
+
+IO.puts("Unique characters: #{inspect(tok.uchars)}")
+IO.puts("Vocabulary size: #{tok.vocab_size} (#{length(tok.uchars)} chars + 1 BOS)")
+IO.puts("BOS token ID: #{tok.bos}")
+```
+
+### Encoding and decoding
+
+Each training document is wrapped with BOS at both ends. The leading BOS says
+"start of name" and the trailing BOS says "I'm done" — the model learns to
+predict BOS when it wants to stop generating.
+
+```elixir
+encoded = Tokenizer.encode(tok, "alice")
+IO.puts("\"alice\" encoded: #{inspect(encoded)}")
+
+# The first and last tokens are BOS
+IO.puts("First token (BOS): #{hd(encoded)}")
+IO.puts("Last token (BOS):  #{List.last(encoded)}")
+
+# Decode back
+decoded = Tokenizer.decode(tok, encoded)
+IO.puts("Decoded: \"#{decoded}\"")
+```
+
+### Why character-level?
+
+Production models use subword tokenizers (BPE, SentencePiece) with 30K-100K tokens.
+We use character-level because:
+
+* The vocabulary is tiny (~27 tokens for lowercase English names)
+* Embedding matrices are small, so training is fast
+* The algorithm is identical — only the vocabulary size changes
+* No tokenizer training step needed
+
+```elixir
+# What the model sees during training for "bob":
+tokens = Tokenizer.encode(tok, "bob")
+
+IO.puts("Training pairs for \"bob\":")
+
+tokens
+|> Enum.zip(tl(tokens))
+|> Enum.with_index()
+|> Enum.each(fn {{input, target}, pos} ->
+  input_str = if input == tok.bos, do: "BOS", else: Map.fetch!(tok.id_to_char, input)
+  target_str = if target == tok.bos, do: "BOS", else: Map.fetch!(tok.id_to_char, target)
+  IO.puts("  position #{pos}: input=#{input_str}(#{input}) → target=#{target_str}(#{target})")
+end)
+```
+
+At each position, the model's job is to predict the next token. Given BOS, predict "b".
+Given "b", predict "o". Given "o", predict "b". Given "b", predict BOS (done).
+
+## Chapter 3: Math Building Blocks
+
+The GPT model is built from a small set of mathematical operations, each implemented
+on lists of `Value` nodes so gradients flow through everything.
+
+### Dot product
+
+The dot product measures similarity between two vectors. In attention, it computes
+how much one position "attends to" another:
+
+```elixir
+alias Microgptex.Math
+
+query = [V.leaf(1.0, :q1), V.leaf(0.0, :q2), V.leaf(1.0, :q3)]
+key = [V.leaf(1.0, :k1), V.leaf(1.0, :k2), V.leaf(0.0, :k3)]
+
+score = Math.dot(query, key)
+IO.puts("dot([1,0,1], [1,1,0]) = #{score.data}")
+
+# Gradients flow back through the dot product
+grads = V.backward(score)
+IO.puts("d(dot)/d(q1) = #{grads[:q1]} (= k1)")
+IO.puts("d(dot)/d(k1) = #{grads[:k1]} (= q1)")
+```
+
+### Softmax
+
+Softmax converts raw scores (logits) into a probability distribution. The larger
+the input, the higher its probability. Temperature scaling (dividing logits before
+softmax) controls how "peaked" the distribution is:
+
+```elixir
+logits = [V.leaf(2.0, :a), V.leaf(5.0, :b), V.leaf(1.0, :c)]
+probs = Math.softmax(logits)
+
+IO.puts("Logits:        [2.0, 5.0, 1.0]")
+
+IO.puts(
+  "Probabilities: [#{Enum.map_join(probs, ", ", &:erlang.float_to_binary(&1.data, decimals: 4))}]"
+)
+
+IO.puts("Sum:           #{Enum.sum(Enum.map(probs, & &1.data)) |> :erlang.float_to_binary(decimals: 6)}")
+IO.puts("Largest logit (5.0) gets highest probability: #{Enum.at(probs, 1).data > 0.9}")
+```
+
+### Temperature effect on softmax
+
+Lower temperature makes the distribution sharper (more confident).
+Higher temperature makes it flatter (more random):
+
+```elixir
+raw_logits = [2.0, 5.0, 1.0]
+
+for temp <- [0.1, 0.5, 1.0, 2.0] do
+  scaled = Enum.map(raw_logits, fn l -> V.leaf(l / temp, make_ref()) end)
+  probs = Math.softmax(scaled)
+  probs_str = Enum.map_join(probs, ", ", &:erlang.float_to_binary(&1.data, decimals: 4))
+  IO.puts("temp=#{temp}: [#{probs_str}]")
+end
+
+:ok
+```
+
+### RMSNorm
+
+RMSNorm normalizes a vector so its root-mean-square is approximately 1.0. This
+stabilizes training by preventing activations from growing or shrinking uncontrollably:
+
+```elixir
+x = [V.leaf(10.0, :a), V.leaf(20.0, :b), V.leaf(30.0, :c)]
+normed = Math.rmsnorm(x)
+
+IO.puts("Before: [#{Enum.map_join(x, ", ", &to_string(&1.data))}]")
+IO.puts("After:  [#{Enum.map_join(normed, ", ", &:erlang.float_to_binary(&1.data, decimals: 4))}]")
+
+rms =
+  normed
+  |> Enum.map(fn v -> v.data * v.data end)
+  |> Enum.sum()
+  |> then(&:math.sqrt(&1 / 3))
+
+IO.puts("RMS of normed vector: #{:erlang.float_to_binary(rms, decimals: 4)} (≈ 1.0)")
+```
+
+### Linear transform
+
+Matrix-vector multiplication is the core operation of every neural network layer.
+Each row of the weight matrix produces one output element:
+
+```elixir
+# Identity matrix preserves input
+x = [V.leaf(3.0, :x1), V.leaf(7.0, :x2)]
+
+identity = [
+  [V.leaf(1.0, :w11), V.leaf(0.0, :w12)],
+  [V.leaf(0.0, :w21), V.leaf(1.0, :w22)]
+]
+
+result = Math.linear(x, identity)
+IO.puts("Identity: [#{Enum.map_join(result, ", ", &to_string(&1.data))}] (unchanged)")
+
+# A rotation-like matrix transforms the input
+transform = [
+  [V.leaf(0.0, :w11), V.leaf(1.0, :w12)],
+  [V.leaf(-1.0, :w21), V.leaf(0.0, :w22)]
+]
+
+result2 = Math.linear(x, transform)
+IO.puts("Rotated:  [#{Enum.map_join(result2, ", ", &to_string(&1.data))}]")
+```
+
+## Chapter 4: The GPT Model
+
+Now we have all the pieces to build the actual GPT model. Let's initialize one
+and look at what's inside.
+
+### Model initialization
+
+The model is a nested map of `Value` leaf nodes — the learnable parameters.
+Each parameter gets a stable `{tag, row, col}` ID so the optimizer can track
+its momentum across training steps:
+
+```elixir
+alias Microgptex.{Model, RNG}
+
+# Tiny config for demonstration
+cfg = %{
+  n_layer: 1,
+  n_embd: 8,
+  block_size: 8,
+  n_head: 2,
+  vocab_size: 5,
+  std: 0.08,
+  seed: 42
+}
+
+{model, _rng} = Model.init(cfg)
+params = Model.params(model)
+
+IO.puts("Model config:")
+IO.puts("  Embedding dim: #{cfg.n_embd}")
+IO.puts("  Attention heads: #{cfg.n_head} (head dim: #{div(cfg.n_embd, cfg.n_head)})")
+IO.puts("  Transformer layers: #{cfg.n_layer}")
+IO.puts("  Vocabulary size: #{cfg.vocab_size}")
+IO.puts("  Block size: #{cfg.block_size}")
+IO.puts("  Total parameters: #{length(params)}")
+```
+
+### Where the parameters live
+
+The parameter count comes from specific weight matrices. Let's count them:
+
+```elixir
+n = cfg.n_embd
+v = cfg.vocab_size
+b = cfg.block_size
+
+wte = v * n
+wpe = b * n
+lm_head = v * n
+
+# Per-layer: Q, K, V, O attention projections + 2 MLP layers
+attn = 4 * n * n
+mlp = n * (4 * n) + (4 * n) * n
+
+IO.puts("Parameter breakdown:")
+IO.puts("  Token embeddings (wte):    #{v} × #{n} = #{wte}")
+IO.puts("  Position embeddings (wpe): #{b} × #{n} = #{wpe}")
+IO.puts("  Language model head:       #{v} × #{n} = #{lm_head}")
+IO.puts("  Attention (Q+K+V+O):       4 × #{n} × #{n} = #{attn}")
+IO.puts("  MLP (fc1 + fc2):           #{n}×#{4 * n} + #{4 * n}×#{n} = #{mlp}")
+IO.puts("  ---")
+IO.puts("  Total: #{wte + wpe + lm_head + (attn + mlp) * cfg.n_layer}")
+```
+
+### The forward pass
+
+The forward pass takes a single token at a time. Given a `(token_id, position_id)`,
+it returns logits — a score for each possible next token:
+
+```elixir
+kv_cache = Model.empty_kv_cache(model)
+
+# Feed token 0 at position 0
+{logits, kv_cache} = Model.gpt(model, 0, 0, kv_cache)
+
+IO.puts("Input: token_id=0, position_id=0")
+IO.puts("Output logits (one per vocab token):")
+
+Enum.with_index(logits)
+|> Enum.each(fn {l, i} ->
+  IO.puts("  token #{i}: #{:erlang.float_to_binary(l.data, decimals: 4)}")
+end)
+```
+
+The logits are small and near-random because the model is randomly initialized.
+After training, the model will assign high logits to likely next tokens and low
+logits to unlikely ones.
+
+### The KV cache
+
+Notice we got back an updated `kv_cache`. Each forward pass stores the key and
+value vectors for the current position, so future tokens can attend to past ones
+without recomputing:
+
+```elixir
+# Feed a second token — it can now attend to both position 0 and position 1
+{logits2, kv_cache2} = Model.gpt(model, 1, 1, kv_cache)
+
+IO.puts("After position 0: #{length(kv_cache[0].keys)} cached key vectors")
+IO.puts("After position 1: #{length(kv_cache2[0].keys)} cached key vectors")
+IO.puts("Second token's logits: [#{Enum.map_join(logits2, ", ", &:erlang.float_to_binary(&1.data, decimals: 4))}]")
+```
+
+## Chapter 5: Training
+
+Training answers the question: *given some data, how do we adjust the model's
+weights so it makes better predictions?*
+
+### Cross-entropy loss
+
+For each position in a training document, the model predicts a probability
+distribution over the vocabulary. The loss measures how surprised the model is
+by the actual next character:
+
+$$loss = -\log(p(\text{correct token}))$$
+
+If the model assigns probability 1.0 to the right answer, loss is 0.
+If the model assigns uniform probability (1/vocab_size), loss is ln(vocab_size).
+
+```elixir
+alias Microgptex.Trainer
+
+# Build a tokenizer for our tiny training data
+tok = Tokenizer.build(["ab", "ba"])
+IO.puts("Vocab: #{inspect(tok.uchars)}, size=#{tok.vocab_size}")
+
+# Initialize a small model
+model_cfg = %{
+  n_layer: 1,
+  n_embd: 8,
+  block_size: 8,
+  n_head: 2,
+  vocab_size: tok.vocab_size,
+  std: 0.08,
+  seed: 42
+}
+
+{model, _rng} = Model.init(model_cfg)
+
+# Compute loss on a training document
+loss = Trainer.loss_for_doc(model, tok, "ab")
+
+IO.puts("Loss on \"ab\": #{:erlang.float_to_binary(loss.data, decimals: 4)}")
+IO.puts("Random baseline (ln(#{tok.vocab_size})): #{:erlang.float_to_binary(:math.log(tok.vocab_size), decimals: 4)}")
+IO.puts("Loss is near random baseline — the untrained model is guessing.")
+```
+
+### One gradient step
+
+The training loop: compute loss → backward for gradients → optimizer updates weights.
+Let's do one step by hand:
+
+```elixir
+alias Microgptex.Adam
+
+# 1. Compute loss (forward pass — builds the computation graph)
+loss = Trainer.loss_for_doc(model, tok, "ab")
+IO.puts("Loss before: #{:erlang.float_to_binary(loss.data, decimals: 4)}")
+
+# 2. Backward pass — compute gradients for all parameters
+grads = V.backward(loss)
+IO.puts("Gradient map has #{map_size(grads)} entries")
+
+# 3. Adam optimizer step
+params = Model.params(model)
+opt = Adam.init(0.01, 0.85, 0.99, 1.0e-8)
+{_opt, updates} = Adam.step(opt, params, grads, 0.01)
+IO.puts("Optimizer produced #{map_size(updates)} parameter updates")
+
+# 4. Apply updates to the model
+model_after = Model.update_params(model, updates)
+
+# 5. Check — did the loss decrease?
+loss_after = Trainer.loss_for_doc(model_after, tok, "ab")
+IO.puts("Loss after:  #{:erlang.float_to_binary(loss_after.data, decimals: 4)}")
+IO.puts("Improvement: #{:erlang.float_to_binary(loss.data - loss_after.data, decimals: 4)}")
+```
+
+### Training loop
+
+The `Trainer.train/1` function runs many steps of this loop. Let's train for a
+few steps and watch the loss decrease. The `on_step` callback lets us capture
+the loss at each step:
+
+```elixir
+losses = :ets.new(:losses, [:ordered_set])
+
+{trained_model, _opt} =
+  Trainer.train(%{
+    docs: ["ab", "ba"],
+    tokenizer: tok,
+    model: model,
+    steps: 30,
+    learning_rate: 0.01,
+    beta1: 0.85,
+    beta2: 0.99,
+    eps_adam: 1.0e-8,
+    on_step: fn step, loss -> :ets.insert(losses, {step, loss}) end
+  })
+
+# Display loss curve as text
+IO.puts("Training progress:")
+IO.puts(String.duplicate("-", 52))
+
+:ets.tab2list(losses)
+|> Enum.each(fn {step, loss} ->
+  bar_len = round(loss * 10)
+  bar = String.duplicate("█", min(bar_len, 40))
+  IO.puts("step #{String.pad_leading(to_string(step + 1), 3)} | #{String.pad_trailing(:erlang.float_to_binary(loss, decimals: 4), 8)} #{bar}")
+end)
+
+:ets.delete(losses)
+
+IO.puts(String.duplicate("-", 52))
+final_loss = Trainer.loss_for_doc(trained_model, tok, "ab")
+IO.puts("Final loss: #{:erlang.float_to_binary(final_loss.data, decimals: 4)}")
+```
+
+### What Adam does differently from plain gradient descent
+
+Plain gradient descent applies `weight -= lr * gradient` to every parameter.
+Adam is smarter: it tracks momentum (smoothed gradient direction) and velocity
+(smoothed gradient magnitude) for each parameter independently:
+
+```elixir
+# Demonstrate Adam's adaptive behavior
+param = V.leaf(1.0, :p)
+opt = Adam.init(0.01, 0.9, 0.999, 1.0e-8)
+
+# Large gradient
+{opt, updates1} = Adam.step(opt, [param], %{p: 10.0}, 0.01)
+IO.puts("Large gradient (10.0): new value = #{:erlang.float_to_binary(updates1[:p], decimals: 6)}")
+
+# Now a small gradient — Adam's momentum from the large gradient persists
+param2 = V.leaf(updates1[:p], :p)
+{_opt, updates2} = Adam.step(opt, [param2], %{p: 0.1}, 0.01)
+IO.puts("Small gradient (0.1):  new value = #{:erlang.float_to_binary(updates2[:p], decimals: 6)}")
+IO.puts("(The step is still significant because of accumulated momentum)")
+```
+
+## Chapter 6: Sampling
+
+After training, we generate text by sampling from the model's predictions
+one token at a time. This is "autoregressive" generation: each generated
+token becomes the input for the next step.
+
+### Generating from an untrained model
+
+An untrained model produces random-looking output. Let's see:
+
+```elixir
+alias Microgptex.Sampler
+
+# Use the original untrained model
+rng = RNG.seed(42)
+{samples, _rng} = Sampler.generate(model, tok, rng, 5, 1.0)
+
+IO.puts("Samples from untrained model (temperature=1.0):")
+
+Enum.with_index(samples, 1)
+|> Enum.each(fn {s, i} ->
+  display = if s == "", do: "(empty — immediately predicted BOS)", else: "\"#{s}\""
+  IO.puts("  #{i}. #{display}")
+end)
+```
+
+### Generating from a trained model
+
+The trained model should produce sequences that look more like the training data:
+
+```elixir
+rng = RNG.seed(123)
+{samples, _rng} = Sampler.generate(trained_model, tok, rng, 10, 1.0)
+
+IO.puts("Samples from trained model (temperature=1.0):")
+
+Enum.with_index(samples, 1)
+|> Enum.each(fn {s, i} ->
+  display = if s == "", do: "(empty)", else: "\"#{s}\""
+  IO.puts("  #{i}. #{display}")
+end)
+```
+
+### Temperature comparison
+
+Temperature controls the randomness of generation. Low temperature = conservative
+and repetitive. High temperature = creative but noisy:
+
+```elixir
+for temp <- [0.1, 0.5, 1.0, 2.0] do
+  rng = RNG.seed(42)
+  {samples, _rng} = Sampler.generate(trained_model, tok, rng, 5, temp)
+  samples_str = Enum.map_join(samples, ", ", fn s -> if s == "", do: "(empty)", else: "\"#{s}\"" end)
+  IO.puts("temp=#{temp}: #{samples_str}")
+end
+
+:ok
+```
+
+## Chapter 7: The Full Pipeline
+
+Let's put everything together and train a slightly larger model on a bigger
+dataset. This is what `Microgptex.run/1` does internally.
+
+```elixir
+# Build a dataset of short names
+docs = ["emma", "olivia", "liam", "noah", "ava", "sophia", "james", "william"]
+
+tok = Tokenizer.build(docs)
+IO.puts("Training on #{length(docs)} names")
+IO.puts("Vocabulary: #{inspect(tok.uchars)} (#{tok.vocab_size} tokens)")
+
+# Larger model
+model_cfg = %{
+  n_layer: 1,
+  n_embd: 16,
+  block_size: 16,
+  n_head: 4,
+  vocab_size: tok.vocab_size,
+  std: 0.08,
+  seed: 42
+}
+
+{model, rng} = Model.init(model_cfg)
+IO.puts("Model: #{length(Model.params(model))} parameters")
+
+# Train
+IO.puts("\nTraining...")
+
+{trained, _opt} =
+  Trainer.train(%{
+    docs: docs,
+    tokenizer: tok,
+    model: model,
+    steps: 50,
+    learning_rate: 0.01,
+    beta1: 0.85,
+    beta2: 0.99,
+    eps_adam: 1.0e-8,
+    on_step: fn step, loss ->
+      if rem(step, 10) == 0 do
+        IO.puts("  step #{String.pad_leading(to_string(step + 1), 3)}: loss=#{:erlang.float_to_binary(loss, decimals: 4)}")
+      end
+    end
+  })
+
+IO.puts("\nGenerating names:")
+
+{samples, _rng} = Sampler.generate(trained, tok, rng, 10, 0.8)
+
+Enum.with_index(samples, 1)
+|> Enum.each(fn {s, i} ->
+  display = if s == "", do: "(empty)", else: s
+  IO.puts("  #{String.pad_leading(to_string(i), 2)}. #{display}")
+end)
+```
+
+With only 50 steps on 8 names, the model won't produce great results — but you
+can see it learning the patterns. Increase `steps` to 200 or 500 and the output
+improves. With the full names dataset (32K names) and 1000 steps, it generates
+plausible-sounding new names.
+
+## What Makes This Implementation Interesting
+
+This isn't just a port from Python. The Elixir version makes explicit what Python
+hides behind mutation:
+
+**Immutable autograd.** Python's `backward()` mutates `.grad` fields via `+=`.
+Elixir's `backward/1` returns a gradient map — you can see where every gradient
+comes from.
+
+**Threaded state.** RNG state, KV cache, optimizer moments — everything flows
+through function arguments. Same seed, same result. Always.
+
+**Pure core, impure shell.** All the math is pure. IO only happens in the top-level
+`Microgptex` module. The training loop is tested by checking model state directly —
+no stdout capturing needed.
+
+**Multi-clause dispatch.** Python uses `if/break` for loop termination. Elixir
+uses pattern-matched function heads: you can read all exit conditions from the
+function signatures.
+
+For the full implementation with all 9 modules, rich documentation, and
+comprehensive tests, see the project source at `lib/microgptex.ex`.
