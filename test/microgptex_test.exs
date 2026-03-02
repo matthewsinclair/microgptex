@@ -1,5 +1,24 @@
 defmodule MicrogptexTest do
-  @moduledoc "Tests for the MicroGPTEx pedagogical GPT trainer."
+  @moduledoc """
+  Behavioral tests for the MicroGPTEx pedagogical GPT trainer.
+
+  These tests prove that the GPT training algorithm works correctly by asserting
+  concrete expected values at every level: individual autograd operations, gradient
+  backpropagation through composite expressions, softmax numerics, tokenizer
+  round-trips, model forward pass determinism, Adam optimizer updates, training
+  convergence, and sampling determinism.
+
+  Every test follows the `/intent-elixir-testing` rules: strong concrete assertions
+  (no shape tests), no control flow in test bodies, one focus per test, real code
+  over mocks, and shared setup via `setup` blocks where tests share common
+  initialization.
+
+  The test suite relies on deterministic behavior throughout: because all state
+  (RNG, model weights, optimizer moments) is threaded explicitly, a fixed seed
+  guarantees identical results across runs. This makes it possible to assert
+  exact numerical values like `assert_in_delta l0.data, -0.3343, 0.001` — a
+  property that would be fragile in a framework with global mutable state.
+  """
 
   use ExUnit.Case, async: true
 

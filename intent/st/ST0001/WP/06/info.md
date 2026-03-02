@@ -3,7 +3,7 @@ verblock: "02 Mar 2026:v0.1: matts - Initial version"
 wp_id: WP-06
 title: "Rich Moduledoc Text"
 scope: Small
-status: Not Started
+status: Done
 ---
 
 # WP-06: Rich Moduledoc Text

@@ -32,11 +32,29 @@ defmodule Microgptex.RNG do
   Uses Erlang's `:rand.*_s` ("stateful" suffix) APIs with the `exsss` algorithm,
   which is fast and has good statistical properties for non-cryptographic use.
 
+  ## Role in GPT training
+
+  Randomness appears in three places in the training algorithm:
+
+  - **Weight initialization** — `normal/3` draws from a Gaussian distribution via the
+    Box-Muller transform to set initial parameter values. The standard deviation controls
+    how "spread out" the initial weights are; too large and gradients explode, too small
+    and the model can't learn.
+  - **Training data shuffling** — `shuffle/2` implements Fisher-Yates to randomize the
+    order in which training examples are presented. This prevents the optimizer from
+    memorizing the sequence order.
+  - **Sampling** — `uniform01/1` provides the random draw used to sample from the
+    model's predicted probability distribution during text generation.
+
   ## Elixir idiom: threaded state
 
   Rather than storing RNG state in a process or ETS table, we thread it explicitly
   through every function that needs randomness. This pattern — `{result, new_state}` —
   is the functional equivalent of Python's stateful `random.random()`.
+
+  The threading has a structural advantage: deterministic reproducibility is guaranteed
+  by construction. Pass the same seed, get the same training run — no global state to
+  corrupt, no test ordering sensitivity, no `random.seed()` calls to forget.
   """
 
   @typedoc "Opaque RNG state from `:rand.seed_s/2`"
@@ -117,7 +135,13 @@ defmodule Microgptex.Value do
   @moduledoc """
   A scalar value with automatic differentiation (autograd).
 
-  Each `Value` is a node in a computation graph. It stores:
+  This is the heart of the project. Every number in the neural network — every weight,
+  every activation, every loss value — is a `Value` node in a computation graph. When
+  you write `V.mul(a, b)`, you get back a new `Value` whose `.data` is `a * b`, but
+  which also remembers that it came from multiplying `a` and `b`, and stores the partial
+  derivatives needed to propagate gradients backward.
+
+  Each `Value` stores:
   - `data` — the scalar float result of the forward pass
   - `id` — a unique identifier (tuple for parameters, reference for intermediates)
   - `children` — the `Value` nodes that were inputs to the operation that produced this node
@@ -126,18 +150,35 @@ defmodule Microgptex.Value do
   ## How autograd works
 
   **Forward pass**: Build the graph by applying operations. Each op creates a new `Value`
-  whose `children` are its inputs and whose `local_grads` are the partial derivatives
-  (chain rule factors) computed from the input values.
+  whose `children` are its inputs and whose `local_grads` are the chain rule factors
+  computed eagerly from the input values. For multiplication, `V.mul(a, b)` stores
+  `local_grads: [b.data, a.data]` because `d(ab)/da = b` and `d(ab)/db = a`.
 
-  **Backward pass**: `backward/1` traverses the graph in reverse topological order,
-  accumulating gradients via the chain rule. The result is a `%{id => gradient}` map.
+  **Backward pass**: `backward/1` performs a topological sort (root-first DFS), then
+  folds through the sorted nodes accumulating gradients via the chain rule. Each node's
+  gradient is the product of its parent's gradient and the local gradient along that edge.
+  The result is a `%{id => gradient}` map — the gradient of the loss w.r.t. every node
+  in the graph.
+
+  ## Fan-out and gradient accumulation
+
+  When the same `Value` is used as input to multiple operations (e.g., `a * a`), its
+  gradient must be the *sum* of the gradients flowing back through each use. This is
+  handled by `Map.update/4`: if a node's ID is already in the gradient map, the new
+  gradient is added to the existing one rather than replacing it.
 
   ## Elixir vs Python
 
-  In Python's micrograd, `backward()` mutates each node's `.grad` field in-place.
-  In Elixir, `backward/1` returns an immutable gradient map — no mutation, no side effects.
-  Gradient fan-out (same value used twice, like `a * a`) is handled naturally by
-  `Map.update/4`, which accumulates rather than overwrites.
+  In Python's micrograd, `backward()` mutates each node's `.grad` field in-place —
+  the `+=` operator silently accumulates gradients through shared mutable references.
+  In Elixir, `backward/1` returns an immutable gradient map. The accumulation is
+  explicit in `Map.update/4`, making the fan-out semantics visible in the code rather
+  than hidden behind mutation order.
+
+  A second difference: Python stores backward logic as closures (`_backward` lambdas)
+  that capture the forward-pass variables. Elixir stores the chain rule factors eagerly
+  as `local_grads` data on the node — making them inspectable at any time, not deferred
+  until backward execution.
 
   ## Note on purity
 
@@ -345,12 +386,31 @@ defmodule Microgptex.Tokenizer do
   gets the highest ID and serves double duty as both start and end marker — the model
   learns to emit BOS when it's done generating.
 
+  ## Role in GPT training
+
+  The tokenizer defines the vocabulary, which determines the dimensions of the model's
+  embedding and output layers. For the names dataset, the vocabulary is typically 27
+  characters (a-z plus BOS), so the embedding matrix is 27×n_embd and the output
+  projection is 27×n_embd.
+
+  Each training document is encoded as `[BOS, c1, c2, ..., cn, BOS]`. The leading BOS
+  is the prompt (the model sees "start of name"), and the trailing BOS is the target
+  that teaches the model to signal "I'm done generating." During sampling, the model
+  starts from BOS and generates characters until it emits BOS again.
+
   ## Why character-level?
 
   For a pedagogical GPT, character-level tokenization keeps things simple: no BPE,
   no sentencepiece, no subword merges. Each token is one character. The vocabulary
-  is small (27 for lowercase English names: a-z plus BOS), which makes the embedding
-  matrices tiny and training fast.
+  is small, which makes the embedding matrices tiny and training fast. Production
+  models use subword tokenizers (30K-100K tokens) to handle open vocabularies
+  efficiently.
+
+  ## Elixir idiom: dual maps for O(1) bidirectional lookup
+
+  Both `char_to_id` (for encoding) and `id_to_char` (for decoding) are stored as
+  maps. This avoids the O(n) cost of reversing a map at decode time — a pattern
+  worth adopting whenever you need bidirectional lookup on a fixed mapping.
   """
 
   @type t :: %__MODULE__{
@@ -424,12 +484,37 @@ defmodule Microgptex.Math do
   @moduledoc """
   Vector and matrix operations on lists of `Microgptex.Value` nodes.
 
-  These are the building blocks for the neural network layers: dot products for
-  attention scores, linear transforms for projections, softmax for probability
-  distributions, and RMSNorm for layer normalization.
+  These are the building blocks for the neural network layers. Each operation
+  produces new `Value` nodes, extending the computation graph so that gradients
+  can flow backward through every mathematical step.
 
-  All operations produce new `Value` nodes, extending the computation graph for
-  automatic differentiation.
+  ## Operations and where they appear in GPT
+
+  - **`dot/2`** — Computes the dot product of two vectors (`sum(w_i * x_i)`).
+    Used in attention to compute how much each position "attends to" every other
+    position: `score = dot(query, key)`.
+  - **`linear/3`** — Matrix-vector multiplication (`W · x`). The core building
+    block for projections: embedding lookups, attention Q/K/V projections, MLP
+    layers, and the final language model head all use linear transforms.
+  - **`softmax/1`** — Converts a vector of logits into a probability distribution
+    that sums to 1.0. Used twice: in attention (to weight values by relevance)
+    and in sampling (to get token probabilities from the model's output logits).
+    Numerically stabilized by subtracting the max logit as a raw float constant
+    (not a `Value` node) so the subtraction is not differentiated — this is correct
+    because the argmax doesn't change the gradient.
+  - **`rmsnorm/1`** — Root-mean-square normalization, a simpler alternative to
+    LayerNorm that skips the mean-centering step. Stabilizes training by keeping
+    activation magnitudes in a consistent range.
+  - **`add_vec/2`**, **`relu_vec/1`**, **`slice/3`** — Element-wise addition,
+    ReLU activation, and subvector extraction used in the MLP and attention blocks.
+
+  ## Elixir idiom: lists as vectors
+
+  Vectors are `[%Value{}]` and matrices are `[[%Value{}]]` — plain Elixir lists.
+  This matches the Python original and keeps the code transparent, but gives O(n)
+  indexed access via `Enum.at/2`. For the tiny dimensions in this pedagogical
+  codebase (vocab ~27, embedding ~16), this is acceptable. For production work,
+  use `Nx` tensors.
   """
 
   alias Microgptex.Value, as: V
@@ -510,9 +595,16 @@ defmodule Microgptex.Model do
   A minimal GPT-2 model: token embeddings, position embeddings, transformer blocks
   (multi-head self-attention + MLP with RMSNorm), and a language model head.
 
-  The model state is a nested map of `Value` leaf nodes (the learnable parameters).
-  Each parameter has a stable `{tag, row, col}` ID that persists across training
-  steps, so the Adam optimizer's momentum and velocity buffers line up correctly.
+  ## What this implements
+
+  GPT (Generative Pre-trained Transformer) is an autoregressive language model. Given
+  a sequence of tokens, it predicts the probability distribution over the next token.
+  Training minimizes the cross-entropy loss between the predicted and actual next tokens.
+
+  The model processes one token at a time (not a full sequence at once). This is
+  simpler than batched attention and matches the autoregressive generation pattern:
+  each forward pass takes a single `(token_id, position_id)` and returns logits over
+  the vocabulary.
 
   ## Architecture
 
@@ -538,12 +630,33 @@ defmodule Microgptex.Model do
       │ lm_head   │  project to vocab logits
       └───────────┘
 
+  **Multi-head attention** splits the embedding into `n_head` independent subspaces.
+  Each head computes its own query/key/value projections, attention scores (scaled dot
+  product), and weighted value sum. The heads are concatenated and projected back.
+  This lets the model attend to different aspects of the input simultaneously.
+
+  **Residual connections** add the block's input directly to its output (`x + f(x)`),
+  giving gradients a "shortcut" path that prevents vanishing gradients in deep networks.
+
   ## KV Cache
 
   The KV cache is a `%{layer_idx => %{keys: [[Value]], values: [[Value]]}}` map.
-  Each forward call appends the current key/value vectors. During training, the cache
-  threads through `Enum.reduce` over token positions. During inference, it grows
-  one entry per generated token.
+  Each forward call prepends the current key/value vectors (reversed on read for
+  correct positional ordering). During training, the cache threads through
+  `Enum.reduce` over token positions. During inference, it grows one entry per
+  generated token, avoiding redundant recomputation of attention over past positions.
+
+  ## Elixir idiom: the params round-trip
+
+  The model state is a nested map of `Value` leaf nodes. The training loop needs to:
+  1. Flatten all params (`params/1`) for gradient computation
+  2. Compute gradients (`Value.backward/1`) keyed by param ID
+  3. Apply optimizer updates (`Adam.step/5`) keyed by param ID
+  4. Walk the model tree applying new values (`update_params/2`)
+
+  The `{tag, row, col}` ID scheme makes this round-trip work: the same parameter
+  always has the same ID, so Adam's momentum/velocity buffers persist across steps.
+  This is explicit where Python uses shared mutable object references implicitly.
   """
 
   alias Microgptex.{Math, RNG}
@@ -821,7 +934,8 @@ defmodule Microgptex.Adam do
   @moduledoc """
   The Adam optimizer — pure state-in, state-out.
 
-  Adam maintains per-parameter exponential moving averages of:
+  Adam ("Adaptive Moment Estimation") is the standard optimizer for training
+  neural networks. It maintains per-parameter exponential moving averages of:
   - `m` (first moment / momentum): smoothed gradient direction
   - `v` (second moment / velocity): smoothed squared gradient magnitude
 
@@ -830,12 +944,33 @@ defmodule Microgptex.Adam do
   effective learning rates (high `v` → small step), while parameters with
   consistent gradient direction get momentum (high `m` → bigger step).
 
+  ## The update formula
+
+  For each parameter with gradient `g`:
+
+      m_t = β₁ · m_{t-1} + (1 - β₁) · g           # smoothed gradient
+      v_t = β₂ · v_{t-1} + (1 - β₂) · g²          # smoothed squared gradient
+      m̂_t = m_t / (1 - β₁^t)                       # bias correction
+      v̂_t = v_t / (1 - β₂^t)                       # bias correction
+      θ_t = θ_{t-1} - lr · m̂_t / (√v̂_t + ε)       # parameter update
+
+  Bias correction compensates for the fact that `m` and `v` are initialized to zero
+  and therefore biased toward zero in early training steps. Without it, the first
+  few updates would be too small.
+
   ## Pure functional design
 
-  In Python, optimizer state lives as mutable attributes on an optimizer object.
-  Here, `step/4` takes the optimizer state and returns a new one — no mutation.
+  In Python, optimizer state lives as mutable attributes on an optimizer object, and
+  `optimizer.step()` mutates model parameters in-place via shared references.
+
+  Here, `step/5` takes the optimizer state and returns `{new_optimizer, updates_map}` —
+  no mutation. The caller applies the updates explicitly via `Model.update_params/2`.
   The `%{id => value}` maps for `m` and `v` persist across training steps because
   parameter IDs are stable `{tag, row, col}` tuples.
+
+  This two-phase design (compute updates, then apply them) makes the data flow
+  visible: the optimizer does not need to know about the model's structure, and
+  the model does not need to know about the optimizer's internals.
   """
 
   @type t :: %__MODULE__{
@@ -906,17 +1041,38 @@ defmodule Microgptex.Trainer do
   @moduledoc """
   Loss computation and training loop.
 
-  The training loop is a `Enum.reduce` over steps. At each step:
-  1. Pick a training document
-  2. Compute the cross-entropy loss over the document
-  3. Backpropagate to get gradients
-  4. Adam update
-  5. Call the `on_step` callback (the IO boundary)
+  ## What cross-entropy loss means
 
-  The `on_step` callback receives `(step, loss_value)` and returns `:ok`.
-  This keeps IO out of the core training logic, making it testable.
-  Note: the callback makes `train/1` technically impure — purity depends on what
-  the caller passes. Use `fn _step, _loss -> :ok end` for pure behavior.
+  For each position in the training document, the model predicts a probability
+  distribution over the vocabulary. The cross-entropy loss measures how surprised
+  the model is by the actual next character: `loss = -log(p(correct_token))`.
+
+  If the model assigns probability 1.0 to the right token, loss is 0.
+  If the model assigns probability 1/27 (uniform over vocab), loss is ln(27) ≈ 3.3.
+  Training drives the loss down by adjusting weights so the model assigns higher
+  probability to the tokens that actually follow in the training data.
+
+  ## The training loop
+
+  The loop is a single `Enum.reduce` over steps. At each step:
+  1. Pick a training document (cycling through the dataset)
+  2. Forward-pass each token to build the computation graph and compute loss
+  3. `Value.backward/1` to get the gradient map
+  4. `Adam.step/5` to compute parameter updates
+  5. `Model.update_params/2` to apply updates to the model
+  6. Call the `on_step` callback with `(step, loss_value)`
+
+  The learning rate decays linearly from `lr` to 0 over the training run, which
+  helps the model settle into a good minimum rather than bouncing around.
+
+  ## Elixir idiom: pure core with callback IO boundary
+
+  The `on_step` callback keeps IO out of the core training logic. In tests, pass
+  `fn _step, _loss -> :ok end` for silent, pure behavior. In production, pass a
+  callback that writes progress to stdout (using iodata for zero-allocation IO).
+
+  This separation means the training loop can be tested by asserting on model state
+  directly — no stdout capturing, no mocking, no "suppress output" flags.
   """
 
   alias Microgptex.{Adam, Math, Model}
@@ -1017,18 +1173,42 @@ defmodule Microgptex.Sampler do
   @moduledoc """
   Temperature-controlled autoregressive text generation.
 
-  Starting from BOS, the sampler repeatedly:
-  1. Forward-pass the current token through the model
+  ## What autoregressive sampling means
+
+  "Autoregressive" means the model generates one token at a time, feeding each
+  generated token back as input for the next step. Starting from BOS:
+
+  1. Forward-pass the current token through the model → logits over vocabulary
   2. Divide logits by temperature (lower = more confident/repetitive)
-  3. Softmax to get probabilities
-  4. Sample from the categorical distribution
-  5. Stop when BOS is emitted (model says "done") or block_size is reached
+  3. Softmax to get a probability distribution
+  4. Sample one token from that distribution
+  5. Feed the sampled token back as input for the next position
+  6. Stop when BOS is emitted (model says "done") or block_size is reached
+
+  The KV cache avoids redundant computation: at each generation step, only the
+  new token is forward-passed, and its key/value vectors are appended to the cache.
+  Past tokens' attention computations are reused from the cache.
 
   ## Temperature
 
+  Temperature controls the "confidence" of the sampling distribution:
   - `temperature = 1.0`: standard sampling, follows the learned distribution
   - `temperature < 1.0`: sharper distribution, more likely to pick the top token
   - `temperature > 1.0`: flatter distribution, more random/creative
+
+  Temperature scaling uses `V.scale_data/2` rather than `V.divide/2` because
+  we don't need gradients during inference — manipulating `.data` directly avoids
+  building unnecessary computation graph nodes.
+
+  ## Elixir idiom: explicit tail recursion with multi-clause termination
+
+  Instead of Python's `while True: ... if done: break` loop, the sampler uses
+  explicit tail recursion through `generate_loop/8`. The two exit conditions —
+  BOS token emitted and maximum length reached — are expressed as separate function
+  clauses: `continue_or_stop/8` dispatches on whether the token matches BOS via
+  a pattern match, and `generate_loop/8` uses a guard (`when pos_id < block_size`)
+  for the length limit. A reader can enumerate all exit paths by reading the
+  function heads, without tracing through loop bodies.
   """
 
   alias Microgptex.{Math, Model, RNG}
@@ -1131,6 +1311,20 @@ defmodule Microgptex do
 
   This loads config from `priv/config.yaml`, downloads training data if needed,
   trains the model, and generates sample text.
+
+  ## The IO boundary
+
+  This module is the *only* place in the entire codebase that performs IO:
+  reading config files, downloading training data via `:httpc`, printing
+  progress during training, and printing generated samples. Every other module
+  is pure — given the same inputs, they always produce the same outputs with
+  no side effects.
+
+  This "pure core, impure shell" architecture means the entire GPT algorithm
+  (autograd, attention, optimization, sampling) can be tested without mocking
+  IO, capturing stdout, or managing test fixtures. The shell is thin: `run/1`
+  is essentially a pipeline that wires together the pure modules and provides
+  the IO callbacks they need.
 
   ## Architecture
 
