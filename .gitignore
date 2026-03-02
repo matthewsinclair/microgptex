@@ -37,3 +37,6 @@ microgptex-*.tar
 
 # Ignore Intent backups
 .backup
+
+# Do not commit .claude to Git
+.claude

@@ -1,0 +1,14 @@
+n_layer: 1
+n_embd: 16
+block_size: 16
+n_head: 4
+learning_rate: 0.01
+beta1: 0.85
+beta2: 0.99
+eps_adam: 1.0e-8
+init_std: 0.08
+seed: 42
+steps: 1000
+temperature: 0.5
+num_samples: 20
+data_url: https://raw.githubusercontent.com/karpathy/makemore/988aa59/names.txt
