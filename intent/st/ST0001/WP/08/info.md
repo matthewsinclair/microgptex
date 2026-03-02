@@ -3,7 +3,7 @@ verblock: "02 Mar 2026:v0.1: matts - Initial version"
 wp_id: WP-08
 title: "Mermaid Diagrams in Livebook"
 scope: Medium
-status: Not Started
+status: Done
 ---
 
 # WP-08: Mermaid Diagrams in Livebook
