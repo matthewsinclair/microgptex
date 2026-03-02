@@ -11,6 +11,11 @@
 - [x] WP-06: Rich moduledoc text — dual-audience `@moduledoc` explaining both GPT concepts and Elixir idioms
 - [x] WP-07: LiveBook walkthrough — interactive notebook in growingswe.com/blog/microgpt style
 
+## Remaining
+
+- [ ] WP-08: Mermaid diagrams — structural diagrams in the Livebook (computation graphs, model architecture, training loop, attention flow)
+- [ ] WP-09: Interactive visualizations — Kino + VegaLite widgets (softmax explorer, temperature slider, live loss curve, attention heatmap)
+
 ## Quality Gates
 
 - [x] `mix compile` — clean
@@ -26,3 +31,5 @@
 - WP-05 depends on WP-01 through WP-04 (polish after all fixes)
 - WP-06 depends on WP-05 (moduledoc after code is stable)
 - WP-07 depends on WP-06 (LiveBook after all code work is done)
+- WP-08 depends on WP-07 (diagrams enhance the existing walkthrough)
+- WP-09 depends on WP-07 + WP-08 (interactivity builds on diagrams; some Mermaid may become Kino.Mermaid)

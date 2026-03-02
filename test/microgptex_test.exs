@@ -578,4 +578,57 @@ defmodule MicrogptexTest do
       assert samples1 == samples2
     end
   end
+
+  # ============================================================================
+  # Integration tests — full pipeline
+  # ============================================================================
+
+  describe "Microgptex (integration)" do
+    test "load_config returns keyword list with correct types" do
+      config = Microgptex.load_config()
+      assert is_integer(Keyword.fetch!(config, :seed))
+      assert is_integer(Keyword.fetch!(config, :steps))
+      assert is_integer(Keyword.fetch!(config, :n_layer))
+      assert is_float(Keyword.fetch!(config, :learning_rate))
+      assert is_float(Keyword.fetch!(config, :temperature))
+      assert is_binary(Keyword.fetch!(config, :data_url))
+    end
+
+    test "full pipeline: train and generate on small inline data" do
+      docs = ["ab", "ba", "aa", "bb"]
+      tok = Tokenizer.build(docs)
+
+      model_cfg = %{
+        n_layer: 1,
+        n_embd: 4,
+        block_size: 4,
+        n_head: 2,
+        vocab_size: tok.vocab_size,
+        std: 0.08,
+        seed: 42
+      }
+
+      {model, rng} = Model.init(model_cfg)
+      loss_before = Trainer.loss_for_doc(model, tok, "ab")
+
+      {trained, _opt} =
+        Trainer.train(%{
+          docs: docs,
+          tokenizer: tok,
+          model: model,
+          steps: 10,
+          learning_rate: 0.01,
+          beta1: 0.85,
+          beta2: 0.99,
+          eps_adam: 1.0e-8,
+          on_step: fn _step, _loss -> :ok end
+        })
+
+      loss_after = Trainer.loss_for_doc(trained, tok, "ab")
+      assert loss_after.data < loss_before.data
+
+      {samples, _rng} = Sampler.generate(trained, tok, rng, 3, 1.0)
+      assert length(samples) == 3
+    end
+  end
 end

@@ -1454,15 +1454,15 @@ defmodule Microgptex do
   end
 
   defp parse_value(str) do
-    case Float.parse(str) do
-      {f, ""} -> f
-      _ -> parse_value_non_float(str)
+    case Integer.parse(str) do
+      {i, ""} -> i
+      _ -> parse_value_float(str)
     end
   end
 
-  defp parse_value_non_float(str) do
-    case Integer.parse(str) do
-      {i, ""} -> i
+  defp parse_value_float(str) do
+    case Float.parse(str) do
+      {f, ""} -> f
       _ -> str
     end
   end
@@ -1475,10 +1475,9 @@ defmodule Microgptex do
 
     if not File.exists?(path) do
       IO.puts("Downloading training data from #{url}...")
-      :ok = Application.ensure_started(:inets)
-      :ok = Application.ensure_started(:ssl)
+      http_opts = [ssl: ssl_opts()]
 
-      case :httpc.request(:get, {String.to_charlist(url), []}, [], []) do
+      case :httpc.request(:get, {String.to_charlist(url), []}, http_opts, []) do
         {:ok, {{_, 200, _}, _headers, body}} ->
           File.write!(path, body)
           IO.puts("Saved to #{path}")
@@ -1493,4 +1492,30 @@ defmodule Microgptex do
 
     path
   end
+
+  # OTP 28 removed :public_key.pkix_verify_hostname_match_fun/1 which httpc's
+  # default SSL setup relied on for RFC 6125 wildcard matching (*.example.com).
+  # Provide our own match function for HTTPS wildcard certificate verification.
+  defp ssl_opts do
+    [
+      verify: :verify_peer,
+      cacerts: :public_key.cacerts_get(),
+      customize_hostname_check: [match_fun: &https_wildcard_match/2]
+    ]
+  end
+
+  defp https_wildcard_match({:dns_id, hostname}, {:dNSName, pattern}) do
+    case String.split(to_string(pattern), ".", parts: 2) do
+      ["*", domain] ->
+        case String.split(to_string(hostname), ".", parts: 2) do
+          [_label, rest] -> rest == domain
+          _ -> false
+        end
+
+      _ ->
+        to_string(hostname) == to_string(pattern)
+    end
+  end
+
+  defp https_wildcard_match(_ref, _presented), do: :default
 end
