@@ -4,7 +4,7 @@
 
 You can train a GPT from scratch in ~1500 lines of Elixir. No Nx, no external dependencies. Just pure functions, pattern matching, and a data structure that remembers every calculation.
 
-[MicroGPTEx](https://gist.github.com/karpathy/8627fe009c40f57531cb18360106ce95) is a faithful translation of Andrej Karpathy's [MicroGPT](https://karpathy.github.io/2026/02/12/microgpt/) into idiomatic Elixir. The original Python implementation is ~200 lines and trains a tiny character-level GPT on human names. The Elixir version does the same thing — but the translation reveals things about the algorithm that Python hides behind mutation.
+[MicroGPTEx](https://gist.github.com/karpathy/8627fe009c40f57531cb18360106ce95) is a faithful translation of [Andrej Karpathy's](https://karpathy.github.io/) [MicroGPT](https://karpathy.github.io/2026/02/12/microgpt/) into idiomatic Elixir. The original Python implementation is ~200 lines and trains a tiny character-level GPT on human names. The Elixir version does the same thing — but the translation reveals things about the algorithm that Python hides behind mutation.
 
 This is Part 1 of a 4-part series. I'll build understanding bottom-up, the same way the code is organized:
 
