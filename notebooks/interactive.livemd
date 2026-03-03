@@ -2,7 +2,11 @@
 
 ```elixir
 Mix.install([
-  {:microgptex, path: Path.join(__DIR__, "..")},
+  if File.exists?(Path.join(__DIR__, "../mix.exs")) do
+    {:microgptex, path: Path.join(__DIR__, "..")}
+  else
+    {:microgptex, github: "matthewsinclair/microgptex"}
+  end,
   {:kino, "~> 0.14"},
   {:kino_vega_lite, "~> 0.1"}
 ])
