@@ -16,7 +16,7 @@ These map to three modules in MicroGPTEx's dependency chain:
 
 ```
 RNG → Value → Tokenizer → Math → Model → ...
-                ^^^^^^^^    ^^^^    ^^^^^
+              ^^^^^^^^    ^^^^   ^^^^^
                 this post covers these three
 ```
 
