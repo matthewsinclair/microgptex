@@ -17,6 +17,7 @@ Both steel threads are complete:
 - `docs/blog/part{1,2,3,4}-*.md` — the 4 blog posts
 - `notebooks/walkthrough.livemd` — step-by-step Livebook walkthrough
 - `notebooks/interactive.livemd` — Kino-based interactive explorations
+- `docs/explainer/` — NotebookLM-generated explainer assets (see `ABOUT.md`)
 - `README.md` — project overview
 - `priv/config.yaml` — default configuration
 

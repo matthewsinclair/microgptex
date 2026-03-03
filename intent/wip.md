@@ -32,6 +32,10 @@ No active work. Both steel threads are complete.
 - `notebooks/walkthrough.livemd` — step-by-step code walkthrough (7 chapters, 12 Mermaid diagrams)
 - `notebooks/interactive.livemd` — Kino-based interactive explorations (softmax, temperature, gradients, training, attention)
 
+### Explainer Assets
+
+- `docs/explainer/` — NotebookLM-generated audio, video, infographic, slides, PDFs (see `ABOUT.md` for provenance)
+
 ## Upcoming Work
 
 - Push to GitHub and verify "Run in Livebook" badge URLs work

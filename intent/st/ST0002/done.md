@@ -72,3 +72,4 @@
 - [x] Update README (soft wrapping, credits, British English)
 - [x] Update Livebook notebooks with conditional Mix.install (local/GitHub fallback)
 - [x] Replace HuggingFace session URLs with stable "Run in Livebook" badge URLs
+- [x] Create `docs/explainer/ABOUT.md` provenance note for NotebookLM-generated assets

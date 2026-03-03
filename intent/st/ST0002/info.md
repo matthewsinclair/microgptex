@@ -301,6 +301,8 @@ Use those links when referring to the LiveBooks. They open in the reader's own L
 - `docs/blog/part2-model.md` — Part 2
 - `docs/blog/part3-attention.md` — Part 3
 - `docs/blog/part4-training.md` — Part 4
+- `docs/explainer/ABOUT.md` — provenance note for NotebookLM-generated assets
+- `docs/explainer/` — NotebookLM-generated explainer assets (audio, video, infographic, slides, PDFs)
 
 ## Related Steel Threads
 

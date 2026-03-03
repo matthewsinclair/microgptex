@@ -38,6 +38,10 @@ docs/blog/
 
 All posts credit Andrej Karpathy's MicroGPT and the growingswe.com walkthrough prominently. Attribution is woven into the narrative rather than relegated to footnotes. Part 1 includes a "Who made this?" section. Part 4's closing amplifies the credit.
 
+### Explainer Assets
+
+`docs/explainer/` contains NotebookLM-generated assets (audio, video, infographic, slides, PDFs) created from the blog posts, README, and source code. These are demonstrations of generative AI capabilities, not authoritative references. See `docs/explainer/ABOUT.md` for provenance.
+
 ### Companion Livebooks
 
 Two Livebook notebooks complement the blog series:

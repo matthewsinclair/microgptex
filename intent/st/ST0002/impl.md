@@ -37,6 +37,11 @@ All 4 blog posts written, reviewed, and polished. All work packages done.
 - Removed all `---` horizontal rules
 - Karpathy/growingswe credit amplified throughout
 
+### Explainer Assets (`docs/explainer/`)
+
+- NotebookLM-generated assets (audio, video, infographic, slides, PDFs) created from the blog posts, README, and source code
+- `ABOUT.md` provenance note added explaining these are AI-generated demonstrations, not authoritative references
+
 ## Editorial Decisions
 
 1. **Depersonalised technical voice**: "I" only in personal intro/reflection; technical prose uses "the model", "the forward pass", "the code"
