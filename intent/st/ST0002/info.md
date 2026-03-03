@@ -1,7 +1,7 @@
 ---
-verblock: "03 Mar 2026:v0.2: matts - Blog post design and plan"
+verblock: "03 Mar 2026:v0.3: matts - All 4 parts written, reviewed, polished"
 intent_version: 2.4.0
-status: WIP
+status: Done
 slug: microgptex-blog-post
 created: 20260303
 completed:
@@ -287,13 +287,13 @@ Use those links when referring to the LiveBooks. They open in the reader's own L
 
 ## Work Packages
 
-| WP  | Title                     | Status      |
-| --- | ------------------------- | ----------- |
-| 01  | Part 1: Autograd          | Not Started |
-| 02  | Part 2: Model             | Not Started |
-| 03  | Part 3: Attention         | Not Started |
-| 04  | Part 4: Training & Gen    | Not Started |
-| 05  | Review & Cross-references | Not Started |
+| WP  | Title                     | Status |
+| --- | ------------------------- | ------ |
+| 01  | Part 1: Autograd          | Done   |
+| 02  | Part 2: Model             | Done   |
+| 03  | Part 3: Attention         | Done   |
+| 04  | Part 4: Training & Gen    | Done   |
+| 05  | Review & Cross-references | Done   |
 
 ## Files
 
