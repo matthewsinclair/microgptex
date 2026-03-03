@@ -49,7 +49,7 @@ Each training document gets wrapped with BOS at both ends:
 
 ```elixir
 Tokenizer.encode(tok, "bob")  #=> [9, 1, 7, 1, 9]
-#                                   ^  b  o  b  ^
+#                                  ^  b  o  b  ^
 #                                  BOS         BOS
 ```
 
