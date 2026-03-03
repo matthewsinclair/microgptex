@@ -103,9 +103,9 @@ The update formula:
 ```
 m_t = β₁ · m_{t-1} + (1 - β₁) · g           # smoothed gradient
 v_t = β₂ · v_{t-1} + (1 - β₂) · g²          # smoothed squared gradient
-m̂   = m_t / (1 - β₁ᵗ)                        # bias correction
-v̂   = v_t / (1 - β₂ᵗ)                        # bias correction
-θ   = θ - lr · m̂ / (√v̂ + ε)                  # parameter update
+m̂   = m_t / (1 - β₁ᵗ)                       # bias correction
+v̂   = v_t / (1 - β₂ᵗ)                       # bias correction
+θ   = θ - lr · m̂ / (√v̂ + ε)                 # parameter update
 ```
 
 Bias correction compensates for the zero initialization of `m` and `v`. Without it, the first few updates would be artificially small because the moving averages haven't warmed up yet.
