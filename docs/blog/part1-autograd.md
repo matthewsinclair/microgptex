@@ -118,7 +118,7 @@ Each line builds a node in a directed acyclic graph. The leaf nodes (`x`, `w1`, 
 
 ```
 w1 = 0.5 ─────┐
-              ├── × → 1.0 ──┐
+              ├── × → 1.0 ───┐
 x  = 2.0 ─────┘              ├── add → 0.7 ──── ReLU → 0.7
                              │
 w2 = -0.3 ───────────────────┘
