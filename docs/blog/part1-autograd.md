@@ -15,7 +15,7 @@ This is Part 1 of a 4-part series. I'll build understanding bottom-up, the same 
 
 Credit where it's due: the original Python code is Karpathy's, and the excellent interactive walkthrough at [growingswe.com](https://growingswe.com/blog/microgpt) is what inspired this Elixir translation. If you haven't read that walkthrough, it's worth your time regardless of which language you prefer.
 
-This whole thing came about because I read Karpathy's original and asked myself: _"Do I really know how a GPT works?"_ The disturbing answer was an unequivocal "No." So I set out to do two things. First, recreate it in Elixir and bring out the best of a pure-functional interpretation. Second, create something other people could use to build their own understanding. Karpathy's original is 200 lines of _code-as-art_ Python; this version is longer, but that's mainly due to substantially more exposition — favouring explanation over brevity.
+This whole thing came about because I read Karpathy's original and asked myself: _"Do I really know how a GPT works?"_ The disturbing answer was an unequivocal "_No!_" So I set out to do two things. First, recreate it in Elixir and bring out the best of a pure-functional interpretation. Second, create something other people could use to build their own understanding. Karpathy's original is 200 lines of _code-as-art_ Python; this version is longer, but that's mainly due to substantially more exposition — favouring explanation over brevity.
 
 ### The architecture at a glance
 
