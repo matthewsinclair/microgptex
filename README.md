@@ -119,7 +119,9 @@ There are two [LiveBook](https://livebook.dev/) notebooks to walk thru the entir
 
 ## Credits
 
-Based on [Andrej Karpathy's MicroGPT](https://github.com/karpathy/microgpt) and the [growingswe walkthrough](https://growingswe.com/blog/microgpt).
+Inspired by [Andrej Karpathy's](https://karpathy.github.io/) [MicroGPT](https://karpathy.github.io/2026/02/12/microgpt/) "code as art" experiment, and the excellent interactive walkthrough at [growingswe.com](https://growingswe.com/blog/microgpt).
+
+Elixir version, LiveBooks, and blog created by [Matthew Sinclair](https://matthewsinclair.com/).
 
 ## License
 
