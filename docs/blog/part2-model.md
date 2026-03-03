@@ -68,7 +68,7 @@ Every training example is a sequence of these (input, target) pairs. The model s
 
 ### Why character-level?
 
-Production models use subword tokenizers (BPE, SentencePiece) with 30K-100K tokens. I use character-level because the vocabulary is tiny (~27 tokens for lowercase English names), the embedding matrices stay small, and the algorithm is identical — only the vocabulary size changes. No tokenizer training step needed.
+Production models use subword [tokenizers](https://huggingface.co/docs/transformers/en/tokenizer_summary) ([BPE](https://medium.com/@dhiyaadli/bpe-vs-wordpiece-vs-sentencepiece-a-beginner-friendly-guide-to-subword-tokenization-8047b39d82e0), [SentencePiece](https://github.com/google/sentencepiece)) with 30K-100K tokens. I use character-level because the vocabulary is tiny (~27 tokens for lowercase English names), the embedding matrices stay small, and the algorithm is identical — only the vocabulary size changes. No tokenizer training step needed.
 
 ## Math building blocks
 
