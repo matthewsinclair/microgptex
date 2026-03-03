@@ -1,3 +1,5 @@
+<!-- livebook:{"app_settings":{"auto_shutdown_ms":5000,"output_type":"rich","show_source":true,"slug":"microgptex-how-gpt-works-from-scratch"}} -->
+
 # MicroGPTEx: How GPT Works, from Scratch
 
 ```elixir
@@ -970,3 +972,5 @@ function signatures.
 
 For the full implementation with all 9 modules, rich documentation, and
 comprehensive tests, see the project source at `lib/microgptex.ex`.
+
+<!-- livebook:{"offset":29827,"stamp":{"token":"XCP.f2bTXr7CY-4ATR4xGJ4m_6yrMvNuCJSBScStoOL-A60G3O6MQImgp8LK3JSBOmmxUPRMwI9xnx-8Cz_M3LnpO3d_yrPikfcl_dP9M87_Cn0YmS0aYQkhnSFp","version":2}} -->

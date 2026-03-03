@@ -309,8 +309,10 @@ The full source is in a single file: [`lib/microgptex.ex`](https://github.com/TO
 
 There are also two [Livebook](https://livebook.dev/) notebooks for hands-on exploration:
 
-- **Code walkthrough** — "MicroGPTEx: How GPT Works, from Scratch." Step through the algorithm chapter by chapter, with executable code cells and Mermaid diagrams. [![Run in Livebook](https://livebook.dev/badge/v1/blue.svg)](https://livebook.dev/run?url=https://github.com/matthewsinclair/microgptex/blob/main/notebooks/walkthrough.livemd)
+- **Code walkthrough** — "MicroGPTEx: How GPT Works, from Scratch." Step through the algorithm chapter by chapter, with executable code cells and Mermaid diagrams.
+  [![Run in Livebook](https://livebook.dev/badge/v1/blue.svg)](https://livebook.dev/run?url=https://github.com/matthewsinclair/microgptex/blob/main/notebooks/walkthrough.livemd)
 
-- **Interactive explorations** — "MicroGPTEx: Interactive Explorations." Drag sliders to reshape softmax distributions, watch training loss curves update in real time, explore attention heatmaps across heads. [![Run in Livebook](https://livebook.dev/badge/v1/blue.svg)](https://livebook.dev/run?url=https://github.com/matthewsinclair/microgptex/blob/main/notebooks/interactive.livemd)
+- **Interactive explorations** — "MicroGPTEx: Interactive Explorations." Drag sliders to reshape softmax distributions, watch training loss curves update in real time, explore attention heatmaps across heads.
+  [![Run in Livebook](https://livebook.dev/badge/v1/blue.svg)](https://livebook.dev/run?url=https://github.com/matthewsinclair/microgptex/blob/main/notebooks/interactive.livemd)
 
 Credit: the original Python implementation is [Andrej Karpathy's MicroGPT](https://karpathy.github.io/2026/02/12/microgpt/), and the interactive walkthrough at [growingswe.com](https://growingswe.com/blog/microgpt) is what inspired this translation.
