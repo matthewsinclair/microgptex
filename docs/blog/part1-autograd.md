@@ -29,8 +29,6 @@ Each module can only depend on the ones before it. The bottom eight are pure —
 
 In this post, I'll focus on the first two: `RNG` and `Value`. They're the foundation that everything else is built on.
 
----
-
 ## Every number remembers where it came from
 
 The fundamental question of training a neural network is: _if I change this weight by a tiny amount, how much does the loss change?_ The answer is called the **gradient** — the derivative of the loss with respect to that weight.
@@ -102,8 +100,6 @@ Every other operation follows the same pattern — compute the result, record th
 
 These six operations — plus negation, subtraction, and division built on top of them — are sufficient to implement the entire GPT algorithm.
 
----
-
 ## Building a computation graph
 
 Here's something that looks like a real neural network computation: a tiny neuron with weights, an input, and an activation function.
@@ -129,8 +125,6 @@ w2 = -0.3 ───────────────────┘
 ```
 
 Every operation in a neural network — every weight times every input, every activation function, every loss computation — builds this graph. The graph is the complete record of "how did we get this answer?"
-
----
 
 ## The backward pass
 
@@ -180,8 +174,6 @@ Tracing through the neuron example, starting from `output` (the relu node) with 
 
 The chain rule factors stored during the forward pass are simply multiplied together during the backward pass. That's all backpropagation is.
 
----
-
 ## Fan-out: when the same value is used twice
 
 What happens when a Value appears in multiple places in the graph? Consider `a * a`:
@@ -205,8 +197,6 @@ Map.update(acc, child.id, local * node_grad, &(&1 + local * node_grad))
 `Map.update/4` says: if this child's ID is already in the gradient map, _add_ the new gradient to the existing one. If it's the first time we've seen this child, store the gradient directly.
 
 Fan-out appears constantly in real neural networks — any time the same weight matrix is used for multiple inputs, any time a value is reused in a residual connection. Getting the accumulation right is critical for correct training.
-
----
 
 ## The Elixir difference: immutable autograd
 
@@ -259,8 +249,6 @@ c.local_grads  #=> [b.data, a.data] — right there, no execution needed
 
 The same math, the same algorithm, the same results. But the data flow is visible in the code itself.
 
----
-
 ## Threaded RNG: determinism by construction
 
 Before I move on from the foundation, there's one more module worth examining: `RNG`. Neural network training uses randomness in three places:
@@ -308,8 +296,6 @@ rng = RNG.seed(42)
 
 Same seed, same training run. Not because you remembered to call `random.seed()`, but because the types enforce it. The threading is admittedly verbose — every function that needs randomness must accept and return the RNG state. But the payoff is that deterministic reproducibility is guaranteed by construction. No global state to corrupt, no test ordering sensitivity, no seeds to forget.
 
----
-
 ## Verifying autograd: the bump test
 
 How do I know the chain rule factors are correct? I verify by comparing autograd against numerical differentiation — the "bump test." Nudge a value by a tiny epsilon and measure how the output changes:
@@ -337,8 +323,6 @@ abs(autograd_da - numerical_da) < 1.0e-6  #=> true
 The expression is `a*b + a^2`. The derivative with respect to `a` is `b + 2a` = `3 + 4 = 7`. Autograd gives us 7.0 exactly. The numerical approximation gives us 6.9999-something. They match.
 
 This is the standard sanity check for any autograd implementation. If the analytical and numerical gradients diverge, there's a bug in the chain rule factors. MicroGPTEx's test suite uses this technique across all operations.
-
----
 
 ## What I've built
 

@@ -10,8 +10,6 @@ But I glossed over the most interesting part: what happens inside the transforme
 
 That's what this post is about.
 
----
-
 ## Why attention matters
 
 Without attention, each token is processed independently. The model sees "b" at position 2, applies some weight matrices, and produces logits. It has no way to know what came before — whether the sequence is "rob" or "job" or "Bob." The model has no memory.
@@ -19,8 +17,6 @@ Without attention, each token is processed independently. The model sees "b" at 
 With attention, each token can "look at" all previous tokens and decide which ones are relevant. When predicting the letter after "qu," the model needs to know that "q" came before. When deciding whether a name is ending, it needs to see how long the sequence has been so far.
 
 Attention provides this by computing a weighted average of all previous positions, where the weights are learned. The model decides _what_ to attend to by learning the projection matrices.
-
----
 
 ## Query, Key, Value: three projections
 
@@ -39,8 +35,6 @@ These three vectors serve different roles:
 - **Value (v)** — represents the information each position offers: "if you attend to me, here's what you get"
 
 All three are the same shape (`n_embd`-dimensional vectors) produced by different weight matrices applied to the same input. The model learns these matrices during training, which means it learns _what_ to look for, _what_ to advertise, and _what_ to offer.
-
----
 
 ## Scaled dot-product attention
 
@@ -86,8 +80,6 @@ Without scaling, the dot products grow in magnitude as the dimension increases (
 
 Dividing by `sqrt(d)` keeps the variance of the dot products roughly constant regardless of dimension, ensuring softmax operates in its useful range.
 
----
-
 ## Multi-head attention
 
 A single attention computation can only focus on one thing at a time. Multi-head attention runs several attention computations in parallel, each on a different slice of the embedding:
@@ -125,8 +117,6 @@ x =
 ```
 
 The `Wo` projection mixes information across heads — it's where the model combines the different perspectives into a single representation.
-
----
 
 ## The KV cache: remembering past positions
 
@@ -167,8 +157,6 @@ The cache is structured as a map keyed by layer index: `%{0 => %{keys: [...], va
 
 During training, the cache is threaded through `Enum.reduce` over all positions in the document — it grows as each position is processed. During generation, the same cache persists across multiple calls to `gpt/4`, one per generated token. This avoids recomputing attention over past positions, which is the whole point of the KV cache optimization.
 
----
-
 ## Residual connections and normalization
 
 The attention output doesn't replace the input — it's _added_ to it:
@@ -199,8 +187,6 @@ x
 ```
 
 This is "pre-norm" style — normalize before the transformation, not after. It keeps activation magnitudes in a stable range, preventing the kind of blow-up that makes training diverge.
-
----
 
 ## The complete transformer block
 
@@ -246,8 +232,6 @@ end
 Five operations, each feeding its output to the next, with a residual connection at the end. The `fc1` layer expands the representation to 4x the embedding dimension, ReLU introduces nonlinearity, and `fc2` contracts back. This expansion-contraction pattern gives the model more capacity to transform the representation within each block.
 
 Multiple transformer blocks stack on top of each other. Each one refines the representation further — the output of block 0 is the input to block 1, and so on. In MicroGPTEx's default config there's just one layer, but the architecture supports any number.
-
----
 
 ## What I've covered
 

@@ -20,8 +20,6 @@ RNG → Value → Tokenizer → Math → Model → ...
                 this post covers these three
 ```
 
----
-
 ## Tokenization: converting text to numbers
 
 The tokenizer maps characters to integers and back. It's character-level — each unique character in the training data gets its own ID, and a special BOS (beginning-of-sequence) token marks the start and end of each name.
@@ -71,8 +69,6 @@ Every training example is a sequence of these (input, target) pairs. The model s
 ### Why character-level?
 
 Production models use subword tokenizers (BPE, SentencePiece) with 30K-100K tokens. I use character-level because the vocabulary is tiny (~27 tokens for lowercase English names), the embedding matrices stay small, and the algorithm is identical — only the vocabulary size changes. No tokenizer training step needed.
-
----
 
 ## Math building blocks
 
@@ -195,8 +191,6 @@ Six functions are all the math I need for a GPT:
 
 Each one produces `Value` nodes, so the autograd engine from Part 1 handles all gradient computation automatically.
 
----
-
 ## The GPT model
 
 Now I have all the pieces to build the actual model. A GPT is a stack of weight matrices organized into a specific architecture. `Model.init/1` creates them all with random values:
@@ -257,8 +251,6 @@ The same `{"wte", 2, 5}` ID links a parameter through flatten → gradient → o
 
 In Python, this linking happens implicitly through shared mutable object references — the optimizer holds a reference to the same object as the model, so `optimizer.step()` can mutate it directly. In Elixir, the linking is explicit through ID-keyed maps.
 
----
-
 ## The forward pass
 
 The forward pass takes a single token and produces a prediction. Given `(token_id, position_id)`, it returns logits — a score for each possible next token:
@@ -309,8 +301,6 @@ An untrained model outputs near-random logits — it has no idea what comes next
 
 The `kv_cache` flows in and out of the forward pass, carrying attention state from previous positions. I'll cover how this works in detail in Part 3, when I dig into the attention mechanism.
 
----
-
 ## Lists as vectors
 
 One thing might look unusual to Elixir developers: the model uses plain lists as vectors and lists-of-lists as matrices. There's no Nx, no tensors, no special numeric types.
@@ -325,8 +315,6 @@ This means `Enum.at/2` for indexed access — O(n), not O(1). For production wor
 The upside is transparency. The data structures are plain Elixir — no special types to learn, no opaque tensor operations, no shape-mismatch errors. You can `IO.inspect` any intermediate value and see exactly what's inside. Every operation is a simple `Enum.map` or `Enum.zip` that you can read and trace.
 
 For real work, use Nx + EXLA. For understanding, use lists.
-
----
 
 ## What I've built
 

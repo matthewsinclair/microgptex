@@ -8,8 +8,6 @@ In [Part 1](part1-autograd.md), I built the autograd engine. In [Part 2](part2-m
 
 Now I make it learn.
 
----
-
 ## Cross-entropy loss: measuring surprise
 
 Before the model can learn, I need a way to measure how wrong it is. That's the loss function.
@@ -59,8 +57,6 @@ For each (input, target) pair, the model does a forward pass, converts logits to
 
 The critical thing: this entire computation builds a `Value` computation graph. The loss node at the root is connected — through softmax, through linear projections, through attention, through embeddings — to every weight in the model. That graph is what `backward/1` will traverse to compute gradients.
 
----
-
 ## One gradient step
 
 Each training step follows the same pattern — forward, backward, update:
@@ -94,8 +90,6 @@ model = Model.update_params(model, updates)
 ```
 
 The gradient map `grads` is `%{id => gradient}` — one entry per node in the computation graph. For each parameter, it says: "if you increase this weight by a tiny amount, the loss changes by this much." The optimizer uses these gradients to decide how to adjust each weight.
-
----
 
 ## The Adam optimizer
 
@@ -146,8 +140,6 @@ Notice the return type: `{new_optimizer_state, %{param_id => new_value}}`. The o
 
 In Python, `optimizer.step()` mutates model parameters in-place through shared object references. The optimizer holds pointers to the same parameter tensors as the model, so it can write directly. In Elixir, there's no shared mutable state. The optimizer and model communicate through ID-keyed maps — the same `{"wte", 2, 5}` ID links a parameter through the entire round-trip.
 
----
-
 ## The params round-trip
 
 This round-trip is the heartbeat of training:
@@ -170,8 +162,6 @@ The `{tag, row, col}` ID scheme is what makes this work. Each parameter has a de
 These IDs persist across training steps. Adam's momentum and velocity buffers (`m` and `v` maps) accumulate statistics keyed by these same IDs. If the IDs changed between steps, the optimizer would lose its memory and revert to plain gradient descent.
 
 In Python, this persistence comes for free from shared mutable references — the optimizer holds the same Python objects as the model. In Elixir, it's explicit in the ID scheme. More verbose, but there's no ambiguity about which parameter is which.
-
----
 
 ## The training loop
 
@@ -207,8 +197,6 @@ The learning rate decays linearly from `lr` to 0 over the training run: `lr_t = 
 The `on_step` callback is the IO boundary. The training loop itself is pure — given the same inputs, it always produces the same outputs. IO (printing progress, updating charts) happens only through the callback the caller provides. In tests, pass `fn _step, _loss -> :ok end` for silent execution. In production, pass a callback that prints to stdout. In Livebook, pass one that pushes to a VegaLite chart.
 
 This "pure core, impure shell" pattern means the training loop can be tested by asserting on the model state directly — no stdout capturing, no mocking, no test fixtures.
-
----
 
 ## Autoregressive sampling
 
@@ -268,8 +256,6 @@ end
 
 All exit conditions are visible from the function heads: the guard `when pos_id < model.block_size` for the length limit, and the pattern `continue_or_stop(bos, _, %{bos: bos}, ...)` for BOS detection. A reader can enumerate every way generation can stop without tracing through loop bodies.
 
----
-
 ## The full pipeline
 
 Here's what happens when you put it all together — train a small model on a few names and generate new ones:
@@ -299,8 +285,6 @@ Enum.each(samples, &IO.puts/1)
 
 With only 50 steps on 8 names, the model won't produce great results. But you can see it learning — the loss drops from near the random baseline down toward something meaningful, and the generated output starts to show character patterns from the training data. Increase to 200 or 500 steps and the output improves noticeably. With the full names dataset (32K names) and 1000 steps, it generates plausible-sounding new names.
 
----
-
 ## What Elixir reveals
 
 This isn't just a port from Python to Elixir. The functional translation makes the algorithm's structure visible in ways the imperative version obscures.
@@ -318,8 +302,6 @@ This isn't just a port from Python to Elixir. The functional translation makes t
 The same math, the same algorithm, the same results. But the data flow is visible in the code itself. When I got confused about how backpropagation works, I could inspect the gradient map. When I wondered whether the optimizer was updating the right parameters, I could check the ID keys. When a test failed, I could trace the entire computation because there was no hidden state to account for.
 
 That's the pedagogical payoff: a functional implementation doesn't just _work_ — it _shows its work_.
-
----
 
 ## Try it yourself
 
