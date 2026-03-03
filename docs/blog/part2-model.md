@@ -238,7 +238,7 @@ Every one of these 912 parameters is a `Value` leaf node with a stable `{tag, ro
 %Value{data: 0.0312, id: {"wte", 2, 5}, children: [], local_grads: []}
 ```
 
-Aside: why strings and not atoms for the tags? The per-layer tags are built with string interpolation — `"layer#{li}.attn_wq"` — because the layer index is a runtime integer. Dynamically creating atoms is generally discouraged in Elixir since the atom table is never garbage collected. With only 1-2 layers it wouldn't matter in practice, but strings are the safer habit. Since the IDs are only used as map keys for equality comparison, there's no functional difference.
+_Aside_: why strings and not atoms for the tags? The per-layer tags are built with string interpolation — `"layer#{li}.attn_wq"` — because the layer index is a runtime integer. Dynamically creating atoms is generally discouraged in Elixir since the atom table is never garbage collected. With only 1-2 layers it wouldn't matter in practice, but strings are the safer habit. Since the IDs are only used as map keys for equality comparison, there's no functional difference.
 
 These stable IDs are critical. The training loop needs to:
 
