@@ -123,7 +123,7 @@ for each step:
 
 There are two [LiveBook](https://livebook.dev/) notebooks to walk thru the entire
 algorithm step by step — autograd, tokenization, attention, training, and sampling —
-with executable code cells:
+with executable code cells and visualisations:
 
 - Code: [notebooks/walkthrough.livemd](./notebooks/walkthrough.livemd)
 - Interactive: [notebooks/interactive.livemd](./notebooks/interactive.livemd)
