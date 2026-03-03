@@ -1,0 +1,532 @@
+# MicroGPTEx: Interactive Explorations
+
+```elixir
+Mix.install([
+  {:microgptex, path: Path.join(__DIR__, "..")},
+  {:kino, "~> 0.14"},
+  {:kino_vega_lite, "~> 0.1"}
+])
+
+alias VegaLite, as: Vl
+alias Microgptex.{Value, Math, Tokenizer, Model, Adam, Trainer, Sampler, RNG}
+```
+
+## Introduction
+
+This notebook builds on the
+[base walkthrough](./walkthrough.livemd) with interactive widgets
+you can manipulate in real time. Each section focuses on a single concept
+and gives you sliders or live charts to build intuition for how GPT works.
+
+If you haven't gone through the base walkthrough yet, start there first —
+it explains the theory behind every operation used here.
+
+**How to use:** Each section is a single code cell. Evaluate cells top-to-bottom
+(or use "Evaluate all" in the notebook menu). Sliders become interactive
+immediately — drag them and the charts update in real time.
+
+## Explore: How Softmax Shapes Probabilities
+
+Softmax converts raw scores (logits) into a probability distribution. Drag
+the sliders below to set four logit values and watch the probabilities
+update in real time.
+
+**What to try:**
+
+* Set one logit much higher than the rest — it dominates the distribution
+* Set all logits equal — you get a uniform distribution (max entropy)
+* Push a logit far negative — its probability approaches zero
+
+```elixir
+# --- Softmax Explorer ---
+
+# Four sliders, one per "token"
+slider_a = Kino.Input.range("Logit A", min: -5.0, max: 5.0, step: 0.1, default: 1.0)
+slider_b = Kino.Input.range("Logit B", min: -5.0, max: 5.0, step: 0.1, default: 2.0)
+slider_c = Kino.Input.range("Logit C", min: -5.0, max: 5.0, step: 0.1, default: 0.0)
+slider_d = Kino.Input.range("Logit D", min: -5.0, max: 5.0, step: 0.1, default: -1.0)
+
+# Bar chart for probabilities
+chart =
+  Vl.new(width: 400, height: 250, title: "Softmax Probabilities")
+  |> Vl.mark(:bar)
+  |> Vl.encode_field(:x, "token", type: :nominal, sort: nil, title: "Token")
+  |> Vl.encode_field(:y, "probability",
+    type: :quantitative,
+    scale: [domain: [0, 1]],
+    title: "P(token)"
+  )
+  |> Vl.encode_field(:color, "token", type: :nominal, legend: nil)
+  |> Kino.VegaLite.new()
+
+# Entropy display
+entropy_frame = Kino.Frame.new()
+
+# Helper: compute softmax probs and update chart + frame
+update_softmax = fn logits, chart, entropy_frame ->
+  tokens = ["A", "B", "C", "D"]
+  max_val = Enum.max(logits)
+  exps = Enum.map(logits, fn l -> :math.exp(l - max_val) end)
+  total = Enum.sum(exps)
+  probs = Enum.map(exps, fn e -> e / total end)
+
+  entropy =
+    probs
+    |> Enum.reject(&(&1 < 1.0e-12))
+    |> Enum.map(fn p -> -p * :math.log(p) end)
+    |> Enum.sum()
+
+  data =
+    tokens
+    |> Enum.zip(probs)
+    |> Enum.map(fn {t, p} -> %{"token" => t, "probability" => p} end)
+
+  Kino.VegaLite.clear(chart)
+  Kino.VegaLite.push_many(chart, data)
+
+  Kino.Frame.render(
+    entropy_frame,
+    Kino.Markdown.new(
+      "**Entropy:** #{:erlang.float_to_binary(entropy, decimals: 4)} " <>
+        "(max = #{:erlang.float_to_binary(:math.log(4.0), decimals: 4)} for uniform)"
+    )
+  )
+end
+
+# Render initial state
+update_softmax.([1.0, 2.0, 0.0, -1.0], chart, entropy_frame)
+
+# Listen for slider changes
+stream =
+  Kino.Control.tagged_stream(
+    a: slider_a,
+    b: slider_b,
+    c: slider_c,
+    d: slider_d
+  )
+
+Kino.listen(stream, %{a: 1.0, b: 2.0, c: 0.0, d: -1.0}, fn {tag, %{value: value}}, state ->
+  state = Map.put(state, tag, value)
+  update_softmax.([state.a, state.b, state.c, state.d], chart, entropy_frame)
+  {:cont, state}
+end)
+
+# Layout: sliders on left, chart + entropy on right
+sliders = Kino.Layout.grid([slider_a, slider_b, slider_c, slider_d], columns: 1)
+Kino.Layout.grid([sliders, Kino.Layout.grid([chart, entropy_frame], columns: 1)], columns: 2)
+```
+
+## Explore: Temperature Controls Randomness
+
+Temperature divides the logits before softmax. Low temperature sharpens
+the distribution (the model becomes "confident"). High temperature
+flattens it (the model becomes "random").
+
+The logits here are fixed at `[2.0, 5.0, 1.0, -1.0, 0.5]` for tokens
+`a b c d e`. Only the temperature changes.
+
+**What to try:**
+
+* Temperature 0.1 — nearly all probability on "b" (the highest logit)
+* Temperature 1.0 — the "natural" distribution
+* Temperature 3.0 — almost uniform, high entropy
+
+```elixir
+# --- Temperature Explorer ---
+
+temp_slider = Kino.Input.range("Temperature", min: 0.1, max: 3.0, step: 0.1, default: 1.0)
+
+temp_chart =
+  Vl.new(width: 400, height: 250, title: "Temperature-Scaled Softmax")
+  |> Vl.mark(:bar)
+  |> Vl.encode_field(:x, "token", type: :nominal, sort: nil, title: "Token")
+  |> Vl.encode_field(:y, "probability",
+    type: :quantitative,
+    scale: [domain: [0, 1]],
+    title: "P(token)"
+  )
+  |> Vl.encode_field(:color, "token", type: :nominal, legend: nil)
+  |> Kino.VegaLite.new()
+
+temp_info_frame = Kino.Frame.new()
+
+# Helper: compute temperature-scaled softmax and update chart + frame
+update_temp = fn temperature, temp_chart, temp_info_frame ->
+  logits = [2.0, 5.0, 1.0, -1.0, 0.5]
+  tokens = ["a", "b", "c", "d", "e"]
+
+  scaled = Enum.map(logits, fn l -> l / temperature end)
+  max_val = Enum.max(scaled)
+  exps = Enum.map(scaled, fn l -> :math.exp(l - max_val) end)
+  total = Enum.sum(exps)
+  probs = Enum.map(exps, fn e -> e / total end)
+
+  entropy =
+    probs
+    |> Enum.reject(&(&1 < 1.0e-12))
+    |> Enum.map(fn p -> -p * :math.log(p) end)
+    |> Enum.sum()
+
+  {max_prob, max_idx} =
+    probs
+    |> Enum.with_index()
+    |> Enum.max_by(fn {p, _i} -> p end)
+
+  data =
+    tokens
+    |> Enum.zip(probs)
+    |> Enum.map(fn {t, p} -> %{"token" => t, "probability" => p} end)
+
+  Kino.VegaLite.clear(temp_chart)
+  Kino.VegaLite.push_many(temp_chart, data)
+
+  Kino.Frame.render(
+    temp_info_frame,
+    Kino.Markdown.new("""
+    | Metric | Value |
+    |--------|-------|
+    | **Temperature** | #{:erlang.float_to_binary(temperature, decimals: 1)} |
+    | **Entropy** | #{:erlang.float_to_binary(entropy, decimals: 4)} |
+    | **Most likely** | "#{Enum.at(tokens, max_idx)}" (#{:erlang.float_to_binary(max_prob * 100, decimals: 1)}%) |
+    """)
+  )
+end
+
+# Render initial state
+update_temp.(1.0, temp_chart, temp_info_frame)
+
+# Listen for slider changes
+Kino.listen(temp_slider, fn %{value: temperature} ->
+  update_temp.(temperature, temp_chart, temp_info_frame)
+end)
+
+Kino.Layout.grid([temp_slider, temp_chart, temp_info_frame], columns: 1)
+```
+
+## Explore: Gradients Flow Through Computation
+
+This is the tiny "neuron" from Chapter 1: `relu(w1*x + w2)`. Drag the
+sliders and watch how gradient magnitudes change. The key insight: when
+`w1*x + w2 < 0`, the ReLU kills the output and **all gradients go to zero**.
+This is the "dead ReLU" problem.
+
+**What to try:**
+
+* Start with w1=0.5, x=2.0, w2=-0.3 (positive activation, gradients flow)
+* Slowly decrease w1 or x until the activation goes negative — gradients vanish
+* Set w2 to a large negative value — the neuron is "dead" regardless of w1 and x
+
+```elixir
+# --- Gradient Explorer ---
+
+w1_slider = Kino.Input.range("w1", min: -3.0, max: 3.0, step: 0.1, default: 0.5)
+w2_slider = Kino.Input.range("w2", min: -3.0, max: 3.0, step: 0.1, default: -0.3)
+x_slider = Kino.Input.range("x", min: -3.0, max: 3.0, step: 0.1, default: 2.0)
+
+grad_chart =
+  Vl.new(width: 400, height: 250, title: "Gradient Magnitudes: relu(w1*x + w2)")
+  |> Vl.mark(:bar)
+  |> Vl.encode_field(:x, "param", type: :nominal, sort: nil, title: "Parameter")
+  |> Vl.encode_field(:y, "gradient",
+    type: :quantitative,
+    title: "|gradient|"
+  )
+  |> Vl.encode_field(:color, "param", type: :nominal, legend: nil)
+  |> Kino.VegaLite.new()
+
+grad_info_frame = Kino.Frame.new()
+
+# Helper: compute gradients and update chart + frame
+update_grads = fn state, grad_chart, grad_info_frame ->
+  w1 = Value.leaf(state.w1, :w1)
+  w2 = Value.leaf(state.w2, :w2)
+  x = Value.leaf(state.x, :x)
+
+  output = Value.relu(Value.add(Value.mul(w1, x), w2))
+  grads = Value.backward(output)
+
+  %{w1: grad_w1, w2: grad_w2, x: grad_x} = grads
+  activation = state.w1 * state.x + state.w2
+
+  data = [
+    %{"param" => "w1", "gradient" => abs(grad_w1)},
+    %{"param" => "w2", "gradient" => abs(grad_w2)},
+    %{"param" => "x", "gradient" => abs(grad_x)}
+  ]
+
+  Kino.VegaLite.clear(grad_chart)
+  Kino.VegaLite.push_many(grad_chart, data)
+
+  zone = if activation > 0, do: "Active (gradients flow)", else: "Dead zone (gradients = 0)"
+
+  Kino.Frame.render(
+    grad_info_frame,
+    Kino.Markdown.new("""
+    | | Value |
+    |---|---|
+    | **w1*x + w2** | #{:erlang.float_to_binary(activation, decimals: 3)} |
+    | **relu output** | #{:erlang.float_to_binary(output.data, decimals: 3)} |
+    | **ReLU zone** | #{zone} |
+    | **d/dw1** | #{:erlang.float_to_binary(grad_w1, decimals: 4)} |
+    | **d/dw2** | #{:erlang.float_to_binary(grad_w2, decimals: 4)} |
+    | **d/dx** | #{:erlang.float_to_binary(grad_x, decimals: 4)} |
+    """)
+  )
+end
+
+# Render initial state
+initial_grad_state = %{w1: 0.5, w2: -0.3, x: 2.0}
+update_grads.(initial_grad_state, grad_chart, grad_info_frame)
+
+# Listen for slider changes
+grad_stream =
+  Kino.Control.tagged_stream(
+    w1: w1_slider,
+    w2: w2_slider,
+    x: x_slider
+  )
+
+Kino.listen(grad_stream, initial_grad_state, fn {tag, %{value: value}}, state ->
+  state = Map.put(state, tag, value)
+  update_grads.(state, grad_chart, grad_info_frame)
+  {:cont, state}
+end)
+
+# Layout
+sliders = Kino.Layout.grid([w1_slider, w2_slider, x_slider], columns: 1)
+Kino.Layout.grid([sliders, Kino.Layout.grid([grad_chart, grad_info_frame], columns: 1)], columns: 2)
+```
+
+## Explore: Training in Real Time
+
+Watch the model learn. The loss curve updates live as training runs, and
+generated samples appear at checkpoints so you can see the model's output
+improve over time.
+
+The training data is a small set of names. With ~50 steps the model starts
+capturing character patterns; increase steps for better results.
+
+```elixir
+# --- Live Training Loss Curve ---
+
+docs = ["emma", "olivia", "liam", "noah", "ava", "sophia", "james", "william"]
+tok = Tokenizer.build(docs)
+
+model_cfg = %{
+  n_layer: 1,
+  n_embd: 16,
+  block_size: 16,
+  n_head: 4,
+  vocab_size: tok.vocab_size,
+  std: 0.08,
+  seed: 42
+}
+
+{model, rng} = Model.init(model_cfg)
+
+Kino.Markdown.new("""
+**Training data:** #{Enum.join(docs, ", ")}
+| | |
+|---|---|
+| **Vocabulary** | #{Enum.join(tok.uchars, " ")} (#{tok.vocab_size} tokens) |
+| **Parameters** | #{length(Model.params(model))} |
+| **Architecture** | #{model_cfg.n_layer} layer, #{model_cfg.n_embd}d, #{model_cfg.n_head} heads |
+""")
+```
+
+```elixir
+# Loss chart — streaming updates during training
+loss_chart =
+  Vl.new(width: 500, height: 300, title: "Training Loss")
+  |> Vl.mark(:line, point: true, size: 1)
+  |> Vl.encode_field(:x, "step", type: :quantitative, title: "Step")
+  |> Vl.encode_field(:y, "loss",
+    type: :quantitative,
+    scale: [zero: false],
+    title: "Cross-Entropy Loss"
+  )
+  |> Kino.VegaLite.new()
+
+sample_frame = Kino.Frame.new()
+
+steps = 50
+checkpoint_every = 10
+
+{trained_model, _opt} =
+  Trainer.train(%{
+    docs: docs,
+    tokenizer: tok,
+    model: model,
+    steps: steps,
+    learning_rate: 0.01,
+    beta1: 0.85,
+    beta2: 0.99,
+    eps_adam: 1.0e-8,
+    on_step: fn step, loss ->
+      Kino.VegaLite.push(loss_chart, %{"step" => step + 1, "loss" => loss}, window: 1000)
+
+      if rem(step + 1, checkpoint_every) == 0 do
+        Kino.Frame.append(
+          sample_frame,
+          Kino.Markdown.new("**Step #{step + 1}** — loss: #{:erlang.float_to_binary(loss, decimals: 4)}")
+        )
+      end
+    end
+  })
+
+# Generate samples from the trained model
+sample_rng = RNG.seed(123)
+{samples, _rng} = Sampler.generate(trained_model, tok, sample_rng, 8, 0.8)
+
+samples_text =
+  samples
+  |> Enum.with_index(1)
+  |> Enum.map_join("\n", fn {s, i} ->
+    display = if s == "", do: "(empty)", else: s
+    "#{i}. #{display}"
+  end)
+
+Kino.Frame.append(
+  sample_frame,
+  Kino.Markdown.new("---\n**Generated names (temperature=0.8):**\n\n#{samples_text}")
+)
+
+Kino.Layout.grid([loss_chart, sample_frame], columns: 1)
+```
+
+## Explore: What Attention Sees
+
+After training, each attention head learns to focus on different patterns.
+Here we reconstruct the attention weights by manually running the attention
+computation on the model's weight matrices — the same math that happens
+inside `Model.gpt/4`, made explicit.
+
+Each heatmap shows how much the token at each position attends to every
+previous position. Brighter = stronger attention.
+
+```elixir
+# --- Attention Weights Heatmap ---
+
+# Pick a short word and encode it
+probe_word = "emma"
+probe_tokens = Tokenizer.encode(tok, probe_word)
+token_labels = Enum.map(probe_tokens, fn id ->
+  if id == tok.bos, do: "BOS", else: Map.fetch!(tok.id_to_char, id)
+end)
+
+n_positions = length(probe_tokens) - 1
+
+# Run the forward pass position by position, capturing K and V at each step
+# We reconstruct attention weights from the model's weight matrices directly
+
+# Inspect the first (and only) transformer layer
+layer = Map.fetch!(trained_model.state.layers, 0)
+
+# Compute embeddings for each position and project to Q, K
+embeddings =
+  probe_tokens
+  |> Enum.take(n_positions)
+  |> Enum.with_index()
+  |> Enum.map(fn {token_id, pos_id} ->
+    Enum.at(trained_model.state.wte, token_id)
+    |> Math.add_vec(Enum.at(trained_model.state.wpe, pos_id))
+    |> Math.rmsnorm()  # embedding norm (matches Model.gpt line 761)
+    |> Math.rmsnorm()  # attention pre-norm (matches attn_block line 790)
+  end)
+
+queries = Enum.map(embeddings, fn emb -> Math.linear(emb, layer.attn_wq) end)
+keys = Enum.map(embeddings, fn emb -> Math.linear(emb, layer.attn_wk) end)
+
+# For each head, compute attention weight matrix
+head_dim = trained_model.head_dim
+n_heads = trained_model.n_head
+scale = :math.sqrt(head_dim * 1.0)
+
+heatmaps =
+  Enum.map(0..(n_heads - 1), fn h ->
+    hs = h * head_dim
+
+    # For each query position, compute attention over all key positions up to and including it
+    rows =
+      Enum.map(0..(n_positions - 1), fn qi ->
+        q_h = Math.slice(Enum.at(queries, qi), hs, head_dim)
+
+        # Attend to positions 0..qi (causal mask)
+        attn_logits =
+          Enum.map(0..qi, fn ki ->
+            k_h = Math.slice(Enum.at(keys, ki), hs, head_dim)
+            score = Value.divide(Math.dot(q_h, k_h), scale)
+            score.data
+          end)
+
+        # Softmax over the causal window
+        max_val = Enum.max(attn_logits)
+        exps = Enum.map(attn_logits, fn l -> :math.exp(l - max_val) end)
+        total = Enum.sum(exps)
+        weights = Enum.map(exps, fn e -> e / total end)
+
+        # Pad with zeros for positions after qi (causal mask)
+        weights ++ List.duplicate(0.0, n_positions - 1 - qi)
+      end)
+
+    # Build VegaLite heatmap data
+    data =
+      rows
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {row, qi} ->
+        row
+        |> Enum.with_index()
+        |> Enum.map(fn {weight, ki} ->
+          %{
+            "query" => Enum.at(token_labels, qi),
+            "key" => Enum.at(token_labels, ki),
+            "query_pos" => qi,
+            "key_pos" => ki,
+            "weight" => weight
+          }
+        end)
+      end)
+
+    heatmap =
+      Vl.new(width: 250, height: 250, title: "Head #{h}")
+      |> Vl.data_from_values(data)
+      |> Vl.mark(:rect)
+      |> Vl.encode_field(:x, "key_pos",
+        type: :ordinal,
+        title: "Key position",
+        axis: [label_expr: "datum.value"]
+      )
+      |> Vl.encode_field(:y, "query_pos",
+        type: :ordinal,
+        title: "Query position",
+        sort: "descending",
+        axis: [label_expr: "datum.value"]
+      )
+      |> Vl.encode_field(:color, "weight",
+        type: :quantitative,
+        scale: [scheme: "blues"],
+        title: "Attention"
+      )
+
+    {"Head #{h}", heatmap}
+  end)
+
+labels_text =
+  token_labels
+  |> Enum.with_index()
+  |> Enum.map_join(" | ", fn {label, pos} -> "pos #{pos}: #{label}" end)
+
+explanation =
+  Kino.Markdown.new("""
+  **Probe word:** "#{probe_word}" — token positions: #{labels_text}
+
+  Each heatmap row shows where that query position is "looking". For example, if
+  row 2 has a bright cell at column 0, position 2 is attending strongly to position 0
+  (the BOS token).
+
+  The lower-left triangle is the causal mask — each position can only attend to
+  earlier positions (and itself). The upper-right is zero (masked out).
+  """)
+
+Kino.Layout.grid([Kino.Layout.tabs(heatmaps), explanation], columns: 1)
+```

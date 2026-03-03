@@ -3,7 +3,7 @@ verblock: "02 Mar 2026:v0.1: matts - Initial version"
 wp_id: WP-09
 title: "Interactive Visualizations in Livebook"
 scope: Large
-status: Not Started
+status: WIP
 ---
 
 # WP-09: Interactive Visualizations in Livebook

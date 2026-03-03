@@ -69,7 +69,7 @@ nodes hold operations, and edges carry the chain rule factors (local gradients):
 graph BT
   a["a = 3.0"] -- "local_grad = 4.0" --> mul["× → 12.0"]
   b["b = 4.0"] -- "local_grad = 3.0" --> mul
-  mul -- "local_grad = 1.0" --> add["+ → 15.0"]
+  mul -- "local_grad = 1.0" --> add["add → 15.0"]
   a -- "local_grad = 1.0" --> add
   style a fill:#b3d9ff,stroke:#333
   style b fill:#b3d9ff,stroke:#333
@@ -114,7 +114,7 @@ nonlinearities, and composition.
 graph BT
   w1["w1 = 0.5"] --> mul["× → 1.0"]
   x["x = 2.0"] --> mul
-  w2["w2 = -0.3"] --> add["+ → 0.7"]
+  w2["w2 = -0.3"] --> add["add → 0.7"]
   mul --> add
   add --> relu["ReLU → 0.7"]
   style w1 fill:#b3d9ff,stroke:#333
@@ -359,7 +359,7 @@ IO.puts(
   "Probabilities: [#{Enum.map_join(probs, ", ", &:erlang.float_to_binary(&1.data, decimals: 4))}]"
 )
 
-IO.puts("Sum:           #{Enum.sum(Enum.map(probs, & &1.data)) |> :erlang.float_to_binary(decimals: 6)}")
+IO.puts("Sum:           #{probs |> Enum.map(& &1.data) |> Enum.sum() |> :erlang.float_to_binary(decimals: 6)}")
 IO.puts("Largest logit (5.0) gets highest probability: #{Enum.at(probs, 1).data > 0.9}")
 ```
 
@@ -441,18 +441,18 @@ attention, MLP, and out to vocabulary logits:
 graph TD
   input["token_id, pos_id"] --> wte["wte: token embedding"]
   input --> wpe["wpe: position embedding"]
-  wte --> add1["+ → combined embedding"]
+  wte --> add1["combine embeddings"]
   wpe --> add1
   add1 --> rms1["RMSNorm"]
 
   subgraph "Transformer Block (×n_layer)"
     rms1 --> rms2["RMSNorm"]
     rms2 --> attn["Multi-Head Attention"]
-    attn --> res1["+ residual"]
+    attn --> res1["residual add"]
     rms1 --> res1
     res1 --> rms3["RMSNorm"]
     rms3 --> mlp["MLP: fc1 → ReLU → fc2"]
-    mlp --> res2["+ residual"]
+    mlp --> res2["residual add"]
     res1 --> res2
   end
 
@@ -538,7 +538,8 @@ kv_cache = Model.empty_kv_cache(model)
 IO.puts("Input: token_id=0, position_id=0")
 IO.puts("Output logits (one per vocab token):")
 
-Enum.with_index(logits)
+logits
+|> Enum.with_index()
 |> Enum.each(fn {l, i} ->
   IO.puts("  token #{i}: #{:erlang.float_to_binary(l.data, decimals: 4)}")
 end)
@@ -837,7 +838,8 @@ rng = RNG.seed(42)
 
 IO.puts("Samples from untrained model (temperature=1.0):")
 
-Enum.with_index(samples, 1)
+samples
+|> Enum.with_index(1)
 |> Enum.each(fn {s, i} ->
   display = if s == "", do: "(empty — immediately predicted BOS)", else: "\"#{s}\""
   IO.puts("  #{i}. #{display}")
@@ -854,7 +856,8 @@ rng = RNG.seed(123)
 
 IO.puts("Samples from trained model (temperature=1.0):")
 
-Enum.with_index(samples, 1)
+samples
+|> Enum.with_index(1)
 |> Enum.each(fn {s, i} ->
   display = if s == "", do: "(empty)", else: "\"#{s}\""
   IO.puts("  #{i}. #{display}")
@@ -928,7 +931,8 @@ IO.puts("\nGenerating names:")
 
 {samples, _rng} = Sampler.generate(trained, tok, rng, 10, 0.8)
 
-Enum.with_index(samples, 1)
+samples
+|> Enum.with_index(1)
 |> Enum.each(fn {s, i} ->
   display = if s == "", do: "(empty)", else: s
   IO.puts("  #{String.pad_leading(to_string(i), 2)}. #{display}")
