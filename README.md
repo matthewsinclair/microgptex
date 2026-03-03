@@ -125,13 +125,8 @@ There are two [LiveBook](https://livebook.dev/) notebooks to walk thru the entir
 algorithm step by step — autograd, tokenization, attention, training, and sampling —
 with executable code cells:
 
-```
-# Code Walkthru
-[notebooks/walkthrough.livemd](./notebooks/walkthrough.livemd)
-
-# Interactive Walkthru
-[notebooks/interactive.livemd](./notebooks/interactive.livemd)
-```
+- Code: [notebooks/walkthrough.livemd](./notebooks/walkthrough.livemd)
+- Interactive: [notebooks/interactive.livemd](./notebooks/interactive.livemd)
 
 ## Credits
 
