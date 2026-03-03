@@ -6,7 +6,7 @@ The model has structure but no knowledge — every weight is random noise. Train
 
 [Part 1](part1-autograd.md) covered the autograd engine. [Part 2](part2-model.md) added tokenisation, math building blocks, and the model architecture. [Part 3](part3-attention.md) dug into the attention mechanism — how tokens look at each other, the KV cache, residual connections.
 
-Now I make it learn.
+Now it learns.
 
 ## Cross-entropy loss: measuring surprise
 

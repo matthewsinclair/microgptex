@@ -6,7 +6,7 @@ You can train a GPT from scratch in ~1500 lines of Elixir. No Nx, no external de
 
 [MicroGPTEx](https://gist.github.com/karpathy/8627fe009c40f57531cb18360106ce95) is a faithful translation of [Andrej Karpathy's](https://karpathy.github.io/) [MicroGPT](https://karpathy.github.io/2026/02/12/microgpt/) into idiomatic Elixir. The original Python implementation is ~200 lines and trains a tiny character-level GPT on human names. The Elixir version does the same thing — but the translation reveals things about the algorithm that Python hides behind mutation.
 
-This is Part 1 of a 4-part series. I'll build understanding bottom-up, the same way the code is organized:
+This is Part 1 of a 4-part series, building understanding bottom-up, the same way the code is organised:
 
 - [Part 1](./part1-autograd.md): **Autograd** — how the model learns from its mistakes (this post)
 - [Part 2](./part2-model.md): **Text, math, and the model** — tokenization, building blocks, and the GPT architecture
@@ -35,7 +35,7 @@ This post focuses on the first two: `RNG` and `Value`. They're the foundation th
 
 ## Every number remembers where it came from
 
-The fundamental question of training a neural network is: _if I change this weight by a tiny amount, how much does the loss change?_ The answer is called the **gradient** — the derivative of the loss with respect to that weight.
+The fundamental question of training a neural network is: _if this weight changes by a tiny amount, how much does the loss change?_ The answer is called the **gradient** — the derivative of the loss with respect to that weight.
 
 Computing gradients by hand for thousands of parameters would be impractical. Automatic differentiation (autograd) does it for you by tracking every operation in a computation graph, then walking that graph backward to propagate gradients via the chain rule.
 
@@ -142,7 +142,7 @@ grads[:w1]  #=> 2.0   — "if w1 increases by 1, output increases by 2.0"
 grads[:w2]  #=> 1.0   — "if w2 increases by 1, output increases by 1.0"
 ```
 
-These gradients are exactly what the optimizer needs. They answer: "which direction should I adjust each weight to reduce the loss?"
+These gradients are exactly what the optimizer needs. They answer: "which direction should each weight be adjusted to reduce the loss?"
 
 Here's the complete `backward/1` implementation:
 
