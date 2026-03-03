@@ -119,7 +119,7 @@ for each step:
   model = Model.update_params(model, updates)
 ```
 
-## Interactive Walkthrough
+## LiveBook Walkthrus
 
 There are two [LiveBook](https://livebook.dev/) notebooks to walk thru the entire
 algorithm step by step — autograd, tokenization, attention, training, and sampling —
