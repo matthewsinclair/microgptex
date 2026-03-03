@@ -4,7 +4,7 @@
 
 The model has structure but no knowledge — every weight is random noise. Training is the process that turns noise into understanding. Generation is where that understanding becomes creative.
 
-In [Part 1](part1-autograd.md), I built the autograd engine. In [Part 2](part2-model.md), I built tokenization, math building blocks, and the model architecture. In [Part 3](part3-attention.md), I dug into the attention mechanism — how tokens look at each other, the KV cache, residual connections.
+[Part 1](part1-autograd.md) covered the autograd engine. [Part 2](part2-model.md) added tokenisation, math building blocks, and the model architecture. [Part 3](part3-attention.md) dug into the attention mechanism — how tokens look at each other, the KV cache, residual connections.
 
 Now I make it learn.
 

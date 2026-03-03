@@ -4,7 +4,7 @@
 
 A neural network can't read letters. It needs numbers — and a small set of mathematical operations to transform them. This post builds the bricks and assembles the GPT architecture.
 
-In [Part 1](part1-autograd.md), I built the autograd engine: a `Value` struct that tracks every computation in a directed acyclic graph, and a `backward/1` function that computes gradients by walking that graph in reverse. I also built a threaded RNG that guarantees deterministic reproducibility by construction.
+[Part 1](part1-autograd.md) covered the autograd engine: a `Value` struct that tracks every computation in a directed acyclic graph, and a `backward/1` function that computes gradients by walking that graph in reverse — plus a threaded RNG that guarantees deterministic reproducibility by construction.
 
 Three more things are needed before the model can train:
 

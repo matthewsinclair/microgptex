@@ -4,7 +4,7 @@
 
 Self-attention is the mechanism that lets a GPT "look back" at previous tokens when predicting the next one. It's the key innovation of the transformer architecture — and it's simpler than you might think.
 
-In [Part 1](part1-autograd.md), I built the autograd engine. In [Part 2](part2-model.md), I built the tokenizer, the math building blocks, and the model structure — embeddings, weight matrices, and a forward pass that processes one token at a time.
+[Part 1](part1-autograd.md) covered the autograd engine. [Part 2](part2-model.md) added the tokeniser, the math building blocks, and the model structure — embeddings, weight matrices, and a forward pass that processes one token at a time.
 
 But the most interesting part was glossed over: what happens inside the transformer block? When the forward pass calls `attn_block/5`, what actually happens?
 
