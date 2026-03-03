@@ -307,12 +307,10 @@ That's the pedagogical payoff: a functional implementation doesn't just _work_ �
 
 The full source is in a single file: [`lib/microgptex.ex`](https://github.com/TODO/microgptex). Nine modules, ~1500 lines, zero external dependencies.
 
-There are also two Livebook notebooks for hands-on exploration:
+There are also two [Livebook](https://livebook.dev/) notebooks for hands-on exploration:
 
-- **[Code walkthrough](https://matthewsinclair-microgptex.hf.space/sessions/tdvjsswoeb4sgwc5wxzsszmxqzu4rq6u6yxqkq4mz52mtima)** — "MicroGPTEx: How GPT Works, from Scratch." Step through the algorithm chapter by chapter, with executable code cells and Mermaid diagrams.
+- **Code walkthrough** — "MicroGPTEx: How GPT Works, from Scratch." Step through the algorithm chapter by chapter, with executable code cells and Mermaid diagrams. [![Run in Livebook](https://livebook.dev/badge/v1/blue.svg)](https://livebook.dev/run?url=https://github.com/matthewsinclair/microgptex/blob/main/notebooks/walkthrough.livemd)
 
-- **[Interactive explorations](https://matthewsinclair-microgptex.hf.space/sessions/tdvjsswoeb4sgwc5wxzsszmxqzu4rqz7h3idiysql3rez4ac)** — "MicroGPTEx: Interactive Explorations." Drag sliders to reshape softmax distributions, watch training loss curves update in real time, explore attention heatmaps across heads.
-
-Both run in [Livebook](https://livebook.dev/) — Elixir's equivalent of Jupyter notebooks.
+- **Interactive explorations** — "MicroGPTEx: Interactive Explorations." Drag sliders to reshape softmax distributions, watch training loss curves update in real time, explore attention heatmaps across heads. [![Run in Livebook](https://livebook.dev/badge/v1/blue.svg)](https://livebook.dev/run?url=https://github.com/matthewsinclair/microgptex/blob/main/notebooks/interactive.livemd)
 
 Credit: the original Python implementation is [Andrej Karpathy's MicroGPT](https://karpathy.github.io/2026/02/12/microgpt/), and the interactive walkthrough at [growingswe.com](https://growingswe.com/blog/microgpt) is what inspired this translation.

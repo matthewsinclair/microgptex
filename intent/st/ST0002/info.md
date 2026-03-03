@@ -275,15 +275,15 @@ The central question running through all 4 parts: **what does Elixir make explic
 
 ## LiveBooks
 
-When we need this, here are the two livebooks:
+"Run in Livebook" links (stable, point to GitHub repo):
 
 - Code walkthru: "MicroGPTEx: How GPT Works, from Scratch"
-  <https://matthewsinclair-microgptex.hf.space/sessions/tdvjsswoeb4sgwc5wxzsszmxqzu4rq6u6yxqkq4mz52mtima>
+  <https://livebook.dev/run?url=https://github.com/matthewsinclair/microgptex/blob/main/notebooks/walkthrough.livemd>
 
 - Interactive: "MicroGPTEx: Interactive Explorations"
-  <https://matthewsinclair-microgptex.hf.space/sessions/tdvjsswoeb4sgwc5wxzsszmxqzu4rqz7h3idiysql3rez4ac>
+  <https://livebook.dev/run?url=https://github.com/matthewsinclair/microgptex/blob/main/notebooks/interactive.livemd>
 
-Use those links when we need to refer to the LiveBooks.
+Use those links when referring to the LiveBooks. They open in the reader's own Livebook instance (local or hosted) and always point to the latest version in the repo.
 
 ## Work Packages
 
