@@ -121,12 +121,16 @@ for each step:
 
 ## Interactive Walkthrough
 
-An interactive [Livebook](https://livebook.dev/) notebook walks through the entire
+There are two [LiveBook((https://livebook.dev/)] notebooks to walk thru the entire
 algorithm step by step — autograd, tokenization, attention, training, and sampling —
 with executable code cells:
 
 ```
+# Code Walkthru
 notebooks/walkthrough.livemd
+
+# Interactive Walkthru
+notebooks/interactive.livemd
 ```
 
 ## Credits
