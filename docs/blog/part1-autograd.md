@@ -8,10 +8,10 @@ You can train a GPT from scratch in ~1500 lines of Elixir. No Nx, no external de
 
 This is Part 1 of a 4-part series. I'll build understanding bottom-up, the same way the code is organized:
 
-1. **Autograd** — how the model learns from its mistakes (this post)
-2. **Text, math, and the model** — tokenization, building blocks, and the GPT architecture
-3. **Attention** — how tokens talk to each other
-4. **Training and generation** — making it learn, making it create
+1. [Part 1](./part1-autograd.md): **Autograd** — how the model learns from its mistakes (this post)
+2. [Part 2](./part2-model.md): **Text, math, and the model** — tokenization, building blocks, and the GPT architecture
+3. [Part 3](./part3-attention.md): **Attention** — how tokens talk to each other
+4. [Part 4](./part4-training.md): **Training and generation** — making it learn, making it create
 
 Credit where it's due: the original Python code is Karpathy's, and the excellent interactive walkthrough at [growingswe.com](https://growingswe.com/blog/microgpt) is what inspired this Elixir translation. If you haven't read that walkthrough, it's worth your time regardless of which language you prefer.
 
