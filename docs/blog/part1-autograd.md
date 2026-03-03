@@ -31,7 +31,7 @@ RNG → Value → Tokenizer → Math → Model → Adam → Trainer → Sampler 
 
 Each module can only depend on the ones before it. The bottom eight are pure — no side effects, no IO. The top-level `Microgptex` module is the only one that touches the outside world.
 
-In this post, I'll focus on the first two: `RNG` and `Value`. They're the foundation that everything else is built on.
+This post focuses on the first two: `RNG` and `Value`. They're the foundation that everything else is built on.
 
 ## Every number remembers where it came from
 
@@ -73,7 +73,7 @@ That last line is the key. The `local_grads` are `[4.0, 3.0]` because:
 - `d(a * b) / da = b = 4.0`
 - `d(a * b) / db = a = 3.0`
 
-These are the chain rule factors — computed eagerly during the forward pass and stored right on the node. When I later need to compute gradients, they're already there.
+These are the chain rule factors — computed eagerly during the forward pass and stored right on the node. When gradients need to be computed later, they're already there.
 
 Here's the multiplication operation in full:
 
@@ -255,7 +255,7 @@ The same math, the same algorithm, the same results. But the data flow is visibl
 
 ## Threaded RNG: determinism by construction
 
-Before I move on from the foundation, there's one more module worth examining: `RNG`. Neural network training uses randomness in three places:
+Before moving on from the foundation, there's one more module worth examining: `RNG`. Neural network training uses randomness in three places:
 
 1. **Weight initialization** — random starting values for all parameters
 2. **Training data shuffling** — randomise the order of training examples
@@ -302,7 +302,7 @@ Same seed, same training run. Not because you remembered to call `random.seed()`
 
 ## Verifying autograd: the bump test
 
-How do I know the chain rule factors are correct? I verify by comparing autograd against numerical differentiation — the "bump test." Nudge a value by a tiny epsilon and measure how the output changes:
+How to verify the chain rule factors are correct? Compare autograd against numerical differentiation — the "bump test." Nudge a value by a tiny epsilon and measure how the output changes:
 
 ```elixir
 epsilon = 1.0e-5

@@ -2,11 +2,11 @@
 
 ## Text, Math, and the Model — Part 2 of Building GPT from Scratch
 
-A neural network can't read letters. It needs numbers — and a small set of mathematical operations to transform them. In this post, I build the bricks and assemble the GPT architecture.
+A neural network can't read letters. It needs numbers — and a small set of mathematical operations to transform them. This post builds the bricks and assembles the GPT architecture.
 
 In [Part 1](part1-autograd.md), I built the autograd engine: a `Value` struct that tracks every computation in a directed acyclic graph, and a `backward/1` function that computes gradients by walking that graph in reverse. I also built a threaded RNG that guarantees deterministic reproducibility by construction.
 
-Now I need three more things before I can train a model:
+Three more things are needed before the model can train:
 
 1. **A tokenizer** — to convert text into numbers the model can process
 2. **Math building blocks** — dot products, matrix multiplication, softmax, normalization
@@ -68,7 +68,7 @@ Every training example is a sequence of these (input, target) pairs. The model s
 
 ### Why character-level?
 
-Production models use subword [tokenizers](https://huggingface.co/docs/transformers/en/tokenizer_summary) ([BPE](https://medium.com/@dhiyaadli/bpe-vs-wordpiece-vs-sentencepiece-a-beginner-friendly-guide-to-subword-tokenization-8047b39d82e0), [SentencePiece](https://github.com/google/sentencepiece)) with 30K-100K tokens. I use character-level because the vocabulary is tiny (~27 tokens for lowercase English names), the embedding matrices stay small, and the algorithm is identical — only the vocabulary size changes. No tokenizer training step needed.
+Production models use subword [tokenizers](https://huggingface.co/docs/transformers/en/tokenizer_summary) ([BPE](https://medium.com/@dhiyaadli/bpe-vs-wordpiece-vs-sentencepiece-a-beginner-friendly-guide-to-subword-tokenization-8047b39d82e0), [SentencePiece](https://github.com/google/sentencepiece)) with 30K-100K tokens. MicroGPTEx uses character-level because the vocabulary is tiny (~27 tokens for lowercase English names), the embedding matrices stay small, and the algorithm is identical — only the vocabulary size changes. No tokenizer training step needed.
 
 ## Math building blocks
 
@@ -154,7 +154,7 @@ temp=1.0: [0.0420, 0.9362, 0.0218]  ← the learned distribution
 temp=2.0: [0.1402, 0.6439, 0.2160]  ← more spread out
 ```
 
-Temperature doesn't change the model — it changes how I interpret the model's output. The model always produces the same logits for the same input; temperature just reshapes the probability distribution before sampling.
+Temperature doesn't change the model — it changes how the model's output is interpreted. The model always produces the same logits for the same input; temperature just reshapes the probability distribution before sampling.
 
 ### RMSNorm
 
@@ -178,7 +178,7 @@ RMSNorm is a simpler alternative to LayerNorm — it skips the mean-centering st
 
 ### The complete toolkit
 
-Six functions are all the math I need for a GPT:
+Six functions are all the math needed for a GPT:
 
 | Function     | What it does           | Where it's used              |
 | ------------ | ---------------------- | ---------------------------- |
@@ -193,7 +193,7 @@ Each one produces `Value` nodes, so the autograd engine from Part 1 handles all 
 
 ## The GPT model
 
-Now I have all the pieces to build the actual model. A GPT is a stack of weight matrices organized into a specific architecture. `Model.init/1` creates them all with random values:
+Now all the pieces are in place to build the actual model. A GPT is a stack of weight matrices organized into a specific architecture. `Model.init/1` creates them all with random values:
 
 ```elixir
 alias Microgptex.{Model, RNG}
@@ -301,7 +301,7 @@ Three steps:
 
 An untrained model outputs near-random logits — it has no idea what comes next. After training, the logits encode which tokens are likely to follow. The token with the highest logit is the model's best guess; softmax turns these into a probability distribution for sampling.
 
-The `kv_cache` flows in and out of the forward pass, carrying attention state from previous positions. I'll cover how this works in detail in Part 3, when I dig into the attention mechanism.
+The `kv_cache` flows in and out of the forward pass, carrying attention state from previous positions. Part 3 covers how this works in detail.
 
 ## Lists as vectors
 
@@ -326,7 +326,7 @@ With tokenization, math, and the model in place, the module count is up to five:
 - **Math** — six operations (dot, linear, softmax, rmsnorm, add_vec, relu_vec) that produce `Value` nodes for automatic gradient computation
 - **Model** — the GPT architecture: embeddings, transformer blocks, language model head, stable `{tag, row, col}` parameter IDs, and a forward pass that processes one token at a time
 
-The model can do a forward pass — turn a token ID into logits over the vocabulary. But I glossed over the most interesting part: what happens inside the transformer block? How does the model "look at" previous tokens to decide what comes next?
+The model can do a forward pass — turn a token ID into logits over the vocabulary. But the most interesting part was glossed over: what happens inside the transformer block? How does the model "look at" previous tokens to decide what comes next?
 
 ## Up next
 

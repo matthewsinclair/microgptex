@@ -6,7 +6,7 @@ Self-attention is the mechanism that lets a GPT "look back" at previous tokens w
 
 In [Part 1](part1-autograd.md), I built the autograd engine. In [Part 2](part2-model.md), I built the tokenizer, the math building blocks, and the model structure — embeddings, weight matrices, and a forward pass that processes one token at a time.
 
-But I glossed over the most interesting part: what happens inside the transformer block? When the forward pass calls `attn_block/5`, what actually happens?
+But the most interesting part was glossed over: what happens inside the transformer block? When the forward pass calls `attn_block/5`, what actually happens?
 
 That's what this post is about.
 
@@ -244,7 +244,7 @@ Everything in this post follows the same attention design as Karpathy's MicroGPT
 - **Residual connections** — `x + f(x)` shortcuts that keep gradients flowing through deep networks
 - **The complete transformer block** — attention + MLP, each with pre-norm and residual connections
 
-All of this is built from the six math operations I described in Part 2, operating on `Value` nodes from Part 1. The autograd engine handles gradient computation through the entire stack automatically.
+All of this is built from the six math operations described in Part 2, operating on `Value` nodes from Part 1. The autograd engine handles gradient computation through the entire stack automatically.
 
 ## Up next
 
