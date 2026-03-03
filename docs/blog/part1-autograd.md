@@ -17,6 +17,10 @@ Credit where it's due: the original Python code is Karpathy's, and the excellent
 
 This whole thing came about because I read Karpathy's original and asked myself: _"Do I really know how a GPT works?"_ The disturbing answer was an unequivocal "_No!_" So I set out to do two things. First, recreate it in Elixir and bring out the best of a pure-functional interpretation. Second, create something other people could use to build their own understanding. Karpathy's original is 200 lines of _code-as-art_ Python; this version is longer, but that's mainly due to substantially more exposition — favouring explanation over brevity.
 
+This is an exercise in making it possible for any suitably motivated software engineer to understand the basic mechanics of a GPT. It is _not_ a complete, production-ready implementation — it's a learning tool. With that in mind, PRs are welcome. If something is wrong, or worse, subtly off-target, feel free to submit a fix. What I'd love to see over time is this getting refined and improved until it reflects both best practice and a genuinely useful learning resource.
+
+I also unashamedly made heavy use of agentic coding throughout this project — specifically [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and my own agentic workflow tool, [Intent](https://github.com/matthewsinclair/intent/). You can see evidence of both in the codebase. The reason I reached for Claude Code was simple: I didn't know how GPTs worked when I started, and I needed something — someone? — to help me learn. What I found interesting was that when Claude Code was _specifically_ instructed to generate code for pedagogical reasons, it does a remarkably good job. At least to my eye.
+
 ### The architecture at a glance
 
 MicroGPTEx is nine modules in a single file, ordered bottom-up by dependency:

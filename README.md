@@ -1,12 +1,12 @@
 # MicroGPTEx
 
-A functional, pedagogical GPT trainer in Elixir — a faithful translation of
-[Andrej Karpathy's MicroGPT](https://github.com/karpathy/microgpt) demonstrating
-autograd, multi-head attention, Adam optimization, and autoregressive text generation
-using only scalar operations. Zero external dependencies.
+A functional, pedagogical GPT trainer in Elixir — a faithful translation of [Andrej Karpathy's MicroGPT](https://github.com/karpathy/microgpt) demonstrating autograd, multi-head attention, Adam optimization, and autoregressive text generation using only scalar operations. Zero external dependencies.
 
-For real work, use [Nx](https://github.com/elixir-nx/nx) + [EXLA](https://github.com/elixir-nx/nx/tree/main/exla).
-This is the pedagogical version.
+For real work, use [Nx](https://github.com/elixir-nx/nx) + [EXLA](https://github.com/elixir-nx/nx/tree/main/exla). This is the pedagogical version.
+
+**A note on scope.** MicroGPTEx is a learning tool, not a production implementation. The goal is to make GPT's mechanics understandable to any suitably motivated software engineer. PRs are welcome — especially if something is wrong or subtly off-target. I'd love this to evolve into both a best-practice reference and a genuinely useful learning resource.
+
+**A note on tooling.** This project was built with heavy use of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Intent](https://github.com/matthewsinclair/intent/). I didn't know how GPTs worked when I started — Claude Code helped me learn, and when specifically instructed to generate code for pedagogy, it does a remarkably good job.
 
 ## What This Is
 
@@ -17,11 +17,9 @@ MicroGPTEx implements the complete GPT training algorithm in idiomatic Elixir:
 - **Adam optimizer** with bias correction
 - **Character-level tokenization** with BOS framing
 - **Temperature-controlled sampling** for text generation
-- **RMSNorm** layer normalization
+- **RMSNorm** layer normalisation
 
-The entire algorithm is expressed as pure functions with explicitly threaded state —
-no process dictionaries, no ETS, no mutation. The only IO happens in the top-level
-`Microgptex` module.
+The entire algorithm is expressed as pure functions with explicitly threaded state — no process dictionaries, no ETS, no mutation. The only IO happens in the top-level `Microgptex` module.
 
 ## Architecture
 
@@ -89,24 +87,17 @@ Microgptex.run(steps: 100, temperature: 0.8)
 mix test
 ```
 
-Behavioral tests covering autograd correctness, gradient backpropagation, softmax/RMSNorm
-numerics, tokenizer round-trips, model forward pass determinism, Adam updates, training
-convergence, and sampling determinism. Every test asserts concrete expected values.
+Behavioural tests covering autograd correctness, gradient backpropagation, softmax/RMSNorm numerics, tokeniser round-trips, model forward pass determinism, Adam updates, training convergence, and sampling determinism. Every test asserts concrete expected values.
 
 ## How It Works
 
 ### Immutable Autograd
 
-Python's micrograd mutates `.grad` fields in-place during `backward()`.
-MicroGPTEx's `Value.backward/1` returns a `%{id => gradient}` map — an immutable
-data structure built by folding over the topologically sorted computation graph.
-Fan-out (same value used multiple times) is handled by `Map.update/4`.
+Python's micrograd mutates `.grad` fields in-place during `backward()`. MicroGPTEx's `Value.backward/1` returns a `%{id => gradient}` map — an immutable data structure built by folding over the topologically sorted computation graph. Fan-out (same value used multiple times) is handled by `Map.update/4`.
 
 ### Threaded State
 
-All state — RNG, KV cache, optimizer moments — flows explicitly through function
-arguments and return values. Every function is `(state_in) -> {result, state_out}`.
-Same seed always produces the same training run.
+All state — RNG, KV cache, optimizer moments — flows explicitly through function arguments and return values. Every function is `(state_in) -> {result, state_out}`. Same seed always produces the same training run.
 
 ### The Training Loop
 
@@ -121,17 +112,14 @@ for each step:
 
 ## LiveBook Walkthrus
 
-There are two [LiveBook](https://livebook.dev/) notebooks to walk thru the entire
-algorithm step by step — autograd, tokenization, attention, training, and sampling —
-with executable code cells and visualisations:
+There are two [LiveBook](https://livebook.dev/) notebooks to walk thru the entire algorithm step by step — autograd, tokenisation, attention, training, and sampling — with executable code cells and visualisations:
 
 - Code: [notebooks/walkthrough.livemd](./notebooks/walkthrough.livemd)
 - Interactive: [notebooks/interactive.livemd](./notebooks/interactive.livemd)
 
 ## Credits
 
-Based on [Andrej Karpathy's MicroGPT](https://github.com/karpathy/microgpt)
-and the [growingswe walkthrough](https://growingswe.com/blog/microgpt).
+Based on [Andrej Karpathy's MicroGPT](https://github.com/karpathy/microgpt) and the [growingswe walkthrough](https://growingswe.com/blog/microgpt).
 
 ## License
 
