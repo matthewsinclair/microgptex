@@ -51,7 +51,7 @@ attn_logits =
   end)
 ```
 
-**2. Normalize to probabilities.** Apply softmax to convert scores into a probability distribution — attention weights that sum to 1.0:
+**2. Normalise to probabilities.** Apply softmax to convert scores into a probability distribution — attention weights that sum to 1.0:
 
 ```elixir
 attn_weights = Math.softmax(attn_logits)
@@ -186,7 +186,7 @@ x
 # ...
 ```
 
-This is "pre-norm" style — normalize before the transformation, not after. It keeps activation magnitudes in a stable range, preventing the kind of blow-up that makes training diverge.
+This is "pre-norm" style — normalise before the transformation, not after. It keeps activation magnitudes in a stable range, preventing the kind of blow-up that makes training diverge.
 
 ## The complete transformer block
 
@@ -238,7 +238,7 @@ Multiple transformer blocks stack on top of each other. Each one refines the rep
 Everything in this post follows the same attention design as Karpathy's MicroGPT — the Elixir translation just makes the data flow explicit. Here's the full mechanism, broken down:
 
 - **Q/K/V projections** — three different views of the same input, learned during training
-- **Scaled dot-product attention** — similarity search via dot products, normalized by softmax, with `sqrt(d)` scaling for numerical stability
+- **Scaled dot-product attention** — similarity search via dot products, normalised by softmax, with `sqrt(d)` scaling for numerical stability
 - **Multi-head attention** — parallel attention on different slices of the embedding, concatenated and projected
 - **KV cache** — stores past keys and values to avoid redundant computation, threaded through the forward pass as an immutable map
 - **Residual connections** — `x + f(x)` shortcuts that keep gradients flowing through deep networks

@@ -254,7 +254,7 @@ The same math, the same algorithm, the same results. But the data flow is visibl
 Before I move on from the foundation, there's one more module worth examining: `RNG`. Neural network training uses randomness in three places:
 
 1. **Weight initialization** — random starting values for all parameters
-2. **Training data shuffling** — randomize the order of training examples
+2. **Training data shuffling** — randomise the order of training examples
 3. **Sampling** — draw from the model's predicted probability distribution
 
 In Python, you'd use `random.random()` or `numpy.random`, which maintain hidden global state. If you want reproducibility, you call `random.seed(42)` at the start and hope nothing else touches the global RNG in between.

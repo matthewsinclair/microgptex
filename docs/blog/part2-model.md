@@ -158,7 +158,7 @@ Temperature doesn't change the model — it changes how I interpret the model's 
 
 ### RMSNorm
 
-RMSNorm normalizes a vector so its root-mean-square is approximately 1.0:
+RMSNorm normalises a vector so its root-mean-square is approximately 1.0:
 
 ```
 rmsnorm(x) = x / sqrt(mean(x^2) + eps)
@@ -185,7 +185,7 @@ Six functions are all the math I need for a GPT:
 | `dot/2`      | Dot product            | Attention scores             |
 | `linear/2`   | Matrix-vector multiply | Every projection             |
 | `softmax/1`  | Scores → probabilities | Attention weights, sampling  |
-| `rmsnorm/1`  | Normalize magnitudes   | Before attention, before MLP |
+| `rmsnorm/1`  | Normalise magnitudes   | Before attention, before MLP |
 | `add_vec/2`  | Element-wise addition  | Residual connections         |
 | `relu_vec/1` | Element-wise ReLU      | MLP activation               |
 
@@ -268,7 +268,7 @@ Here's what happens inside `Model.gpt/4`:
 def gpt(model, token_id, pos_id, kv_cache) do
   %{wte: wte, wpe: wpe, lm_head: lm_head, layers: layers} = model.state
 
-  # 1. Look up embeddings and normalize
+  # 1. Look up embeddings and normalise
   x =
     Enum.at(wte, token_id)
     |> Math.add_vec(Enum.at(wpe, pos_id))
@@ -291,7 +291,7 @@ end
 
 Three steps:
 
-1. **Embed**: look up the token's embedding vector from `wte`, add the position embedding from `wpe`, normalize with RMSNorm. This gives the model two pieces of information — _what_ token this is and _where_ it is in the sequence.
+1. **Embed**: look up the token's embedding vector from `wte`, add the position embedding from `wpe`, normalise with RMSNorm. This gives the model two pieces of information — _what_ token this is and _where_ it is in the sequence.
 
 2. **Transform**: pass through each transformer block (attention + MLP). Each block refines the representation, incorporating information from previous tokens via the attention mechanism and the KV cache.
 
