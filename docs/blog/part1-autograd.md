@@ -111,7 +111,7 @@ w1 = V.leaf(0.5, :w1)
 w2 = V.leaf(-0.3, :w2)
 
 weighted = V.add(V.mul(w1, x), w2)  # w1*x + w2 = 0.7
-output = V.relu(weighted)            # relu(0.7) = 0.7
+output = V.relu(weighted)           # relu(0.7) = 0.7
 ```
 
 Each line builds a node in a directed acyclic graph. The leaf nodes (`x`, `w1`, `w2`) are inputs. The operation nodes (`mul`, `add`, `relu`) remember their children and store the chain rule factors:
