@@ -305,7 +305,7 @@ That's the pedagogical payoff: a functional implementation doesn't just _work_ â
 
 ## Try it yourself
 
-The full source is in a single file: [`lib/microgptex.ex`](https://github.com/TODO/microgptex). Nine modules, ~1500 lines, zero external dependencies.
+The full source is in a single file: [`lib/microgptex.ex`](https://github.com/TODO/microgptex). Nine modules with ~1,500 lines in total, made up of ~600 lines of code (~37%) and ~900 lines of explanatory comments (~63%), with zero external dependencies.
 
 There are also two [Livebook](https://livebook.dev/) notebooks for hands-on exploration:
 
