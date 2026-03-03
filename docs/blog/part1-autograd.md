@@ -342,3 +342,9 @@ This mirrors what Karpathy's [micrograd](https://github.com/karpathy/micrograd) 
 ## Up next
 
 [Part 2: "From Letters to Logits"](part2-model.md) converts text into numbers, builds the mathematical operations that make up neural network layers, and assembles the GPT model architecture — following the same structure as Karpathy's original, but with stable parameter IDs that make the training loop work in a functional language.
+
+## Who made this?
+
+Inspired by [Andrej Karpathy's](https://karpathy.github.io/) [MicroGPT](https://karpathy.github.io/2026/02/12/microgpt/) "code as art" experiment, and the excellent interactive walkthrough at [growingswe.com](https://growingswe.com/blog/microgpt).
+
+Elixir version, LiveBooks, and blog created by [Matthew Sinclair](https://matthewsinclair.com/).
