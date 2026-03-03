@@ -287,7 +287,7 @@ With only 50 steps on 8 names, the model won't produce great results. But you ca
 
 ## What Elixir reveals
 
-This isn't just a port from Python to Elixir. The functional translation makes the algorithm's structure visible in ways the imperative version obscures.
+This isn't just a port from Python to Elixir. Karpathy's original is remarkably clean — that clarity is what made a faithful functional translation possible. But the translation reveals things about the algorithm's structure that the imperative version obscures.
 
 **Immutable autograd.** Python's `backward()` mutates `.grad` fields via `+=` — the gradient computation is a side effect. Elixir's `backward/1` returns a gradient map — an immutable data structure you can hold, compare, and pass to multiple consumers. The fan-out accumulation is explicit in `Map.update/4`.
 
@@ -315,4 +315,4 @@ There are also two [Livebook](https://livebook.dev/) notebooks for hands-on expl
 - **Interactive explorations** — "MicroGPTEx: Interactive Explorations." Drag sliders to reshape softmax distributions, watch training loss curves update in real time, explore attention heatmaps across heads.
   <br/>[![Run in Livebook](https://livebook.dev/badge/v1/blue.svg)](https://livebook.dev/run?url=https://github.com/matthewsinclair/microgptex/blob/main/notebooks/interactive.livemd)
 
-Credit: the original Python implementation is [Andrej Karpathy's MicroGPT](https://karpathy.github.io/2026/02/12/microgpt/), and the interactive walkthrough at [growingswe.com](https://growingswe.com/blog/microgpt) is what inspired this translation.
+None of this would exist without [Andrej Karpathy's MicroGPT](https://karpathy.github.io/2026/02/12/microgpt/) — a masterclass in fitting a complete GPT into minimal code. The interactive walkthrough at [growingswe.com](https://growingswe.com/blog/microgpt) is equally worth reading; it's what convinced me this algorithm could be understood by working through it hands-on, and directly inspired the Livebook notebooks.

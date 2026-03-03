@@ -233,9 +233,9 @@ Five operations, each feeding its output to the next, with a residual connection
 
 Multiple transformer blocks stack on top of each other. Each one refines the representation further — the output of block 0 is the input to block 1, and so on. In MicroGPTEx's default config there's just one layer, but the architecture supports any number.
 
-## What I've covered
+## The full attention mechanism
 
-The full attention mechanism, broken down:
+Everything in this post follows the same attention design as Karpathy's MicroGPT — the Elixir translation just makes the data flow explicit. Here's the full mechanism, broken down:
 
 - **Q/K/V projections** — three different views of the same input, learned during training
 - **Scaled dot-product attention** — similarity search via dot products, normalized by softmax, with `sqrt(d)` scaling for numerical stability
@@ -246,6 +246,6 @@ The full attention mechanism, broken down:
 
 All of this is built from the six math operations I described in Part 2, operating on `Value` nodes from Part 1. The autograd engine handles gradient computation through the entire stack automatically.
 
-## What's next
+## Up next
 
-In [Part 4: "Learning and Dreaming"](part4-training.md), I'll make the model learn. I'll cover cross-entropy loss (measuring how wrong the model is), the Adam optimizer (adjusting weights intelligently), the training loop (a single `Enum.reduce`), and autoregressive sampling (generating text one token at a time). It's where random noise becomes understanding — and understanding becomes creativity.
+[Part 4: "Learning and Dreaming"](part4-training.md) makes the model learn. Cross-entropy loss (measuring how wrong the model is), the Adam optimizer (adjusting weights intelligently), the training loop (a single `Enum.reduce`), and autoregressive sampling (generating text one token at a time). It's where random noise becomes understanding — and understanding becomes creativity.

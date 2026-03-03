@@ -316,9 +316,9 @@ The upside is transparency. The data structures are plain Elixir — no special 
 
 For real work, use Nx + EXLA. For understanding, use lists.
 
-## What I've built
+## Three more modules
 
-Three more modules are now in place:
+With tokenization, math, and the model in place, the module count is up to five:
 
 - **Tokenizer** — character-level encoding with BOS framing and O(1) bidirectional lookup maps
 - **Math** — six operations (dot, linear, softmax, rmsnorm, add_vec, relu_vec) that produce `Value` nodes for automatic gradient computation
@@ -326,6 +326,6 @@ Three more modules are now in place:
 
 The model can do a forward pass — turn a token ID into logits over the vocabulary. But I glossed over the most interesting part: what happens inside the transformer block? How does the model "look at" previous tokens to decide what comes next?
 
-## What's next
+## Up next
 
-In [Part 3: "How Tokens Talk to Each Other"](part3-attention.md), I'll open up the transformer block and explain multi-head self-attention — the mechanism that lets each token attend to all previous tokens. I'll cover query/key/value projections, scaled dot-product attention, the KV cache, and residual connections. It's simpler than it sounds.
+[Part 3: "How Tokens Talk to Each Other"](part3-attention.md) opens up the transformer block and explains multi-head self-attention — the mechanism that lets each token attend to all previous tokens. Query/key/value projections, scaled dot-product attention, the KV cache, and residual connections. It's simpler than it sounds.

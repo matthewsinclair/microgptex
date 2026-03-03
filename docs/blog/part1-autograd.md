@@ -324,17 +324,17 @@ The expression is `a*b + a^2`. The derivative with respect to `a` is `b + 2a` = 
 
 This is the standard sanity check for any autograd implementation. If the analytical and numerical gradients diverge, there's a bug in the chain rule factors. MicroGPTEx's test suite uses this technique across all operations.
 
-## What I've built
+## The foundation so far
 
-In ~250 lines of Elixir, I have:
+In ~250 lines of Elixir, the autograd foundation is in place:
 
 - A **Value struct** that tracks every computation in a directed acyclic graph
 - A **backward pass** that computes gradients for all parameters via the chain rule, returning an immutable `%{id => gradient}` map
 - **Fan-out handling** via `Map.update/4` — explicit gradient accumulation where Python uses implicit mutation
 - A **threaded RNG** that guarantees deterministic reproducibility by construction
 
-This is the foundation. Every weight in the neural network will be a Value node. Every forward pass will build a computation graph. Every training step will call `backward/1` to get gradients. The optimizer will use those gradients to adjust the weights. And the whole thing will be reproducible because the RNG state flows explicitly through every function.
+This mirrors what Karpathy's [micrograd](https://github.com/karpathy/micrograd) does in Python — but with immutable data structures instead of mutation. Every weight in the neural network will be a Value node. Every forward pass will build a computation graph. Every training step will call `backward/1` to get gradients. The optimizer will use those gradients to adjust the weights. And the whole thing will be reproducible because the RNG state flows explicitly through every function.
 
-## What's next
+## Up next
 
-In [Part 2: "From Letters to Logits"](part2-model.md), I'll convert text into numbers, build the mathematical operations that make up neural network layers, and assemble the GPT model architecture. I'll show how nine modules fit together — and why stable parameter IDs are the key to making the training loop work.
+[Part 2: "From Letters to Logits"](part2-model.md) converts text into numbers, builds the mathematical operations that make up neural network layers, and assembles the GPT model architecture — following the same structure as Karpathy's original, but with stable parameter IDs that make the training loop work in a functional language.
