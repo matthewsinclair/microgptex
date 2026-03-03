@@ -40,6 +40,7 @@ The central question running through all 4 parts: **what does Elixir make explic
 
 ### Tone and style
 
+- First person singular ("I", "I'll") — not "we" or "we'll"
 - Conversational but technically precise
 - Real code from MicroGPTEx (not pseudocode)
 - Side-by-side Elixir vs Python where the idiom differs
@@ -60,7 +61,7 @@ The central question running through all 4 parts: **what does Elixir make explic
 1. **Introduction** — What is MicroGPTEx, why translate MicroGPT to Elixir, what you'll learn
    - Explicit credit to Karpathy's MicroGPT and the growingswe walkthrough
    - The 9-module architecture diagram (RNG → Value → ... → Microgptex)
-   - "We'll build understanding bottom-up, the same way the code is organized"
+   - "I'll build understanding bottom-up, the same way the code is organized"
 
 2. **The Value struct** — Every number remembers where it came from
    - The `%Value{data, id, children, local_grads}` struct
@@ -107,13 +108,13 @@ The central question running through all 4 parts: **what does Elixir make explic
 
 **File**: `docs/blog/part2-model.md`
 
-**Hook**: "A neural network can't read letters. It needs numbers — and a small set of mathematical operations to transform them. In this post, we build the bricks and assemble the GPT architecture."
+**Hook**: "A neural network can't read letters. It needs numbers — and a small set of mathematical operations to transform them. In this post, I build the bricks and assemble the GPT architecture."
 
 **Sections**:
 
-1. **Recap and setup** — Where we are in the build
-   - We have autograd. Now we need: tokenization, math ops, and a model structure.
-   - The 9-module dependency chain: we're covering Tokenizer, Math, and Model
+1. **Recap and setup** — Where I am in the build
+   - I have autograd. Now I need: tokenization, math ops, and a model structure.
+   - The 9-module dependency chain: I'm covering Tokenizer, Math, and Model
 
 2. **Tokenization** — Converting text to numbers
    - Character-level: each character gets an integer ID
@@ -128,7 +129,7 @@ The central question running through all 4 parts: **what does Elixir make explic
    - Linear transform: matrix-vector multiplication (the core of every layer)
    - Softmax: converting scores to probabilities
    - RMSNorm: keeping activations in a stable range
-   - "These six functions (dot, linear, softmax, rmsnorm, add_vec, relu_vec) are all the math you need for a GPT"
+   - "These six functions (dot, linear, softmax, rmsnorm, add_vec, relu_vec) are all the math I need for a GPT"
 
 4. **Softmax and temperature** — Controlling confidence
    - Softmax formula with numerical stability trick (subtract max)
@@ -163,7 +164,7 @@ The central question running through all 4 parts: **what does Elixir make explic
 
 **Sections**:
 
-1. **Recap** — We have a model with random weights. It can do a forward pass. But we skipped the most interesting part: what happens inside the transformer block?
+1. **Recap** — I have a model with random weights. It can do a forward pass. But I skipped the most interesting part: what happens inside the transformer block?
 
 2. **The intuition** — Why attention matters
    - Without attention, each token is processed independently — the model has no memory
@@ -190,8 +191,8 @@ The central question running through all 4 parts: **what does Elixir make explic
    - Diagram: multi-head attention flow
 
 6. **The KV cache** — Remembering past positions
-   - During generation, we process one token at a time
-   - The KV cache stores past keys and values so we don't recompute them
+   - During generation, I process one token at a time
+   - The KV cache stores past keys and values to avoid recomputation
    - Elixir idiom: `%{layer_idx => %{keys: [..], values: [..]}}` — prepend + reverse
    - Sequence diagram showing cache growth
 
@@ -215,7 +216,7 @@ The central question running through all 4 parts: **what does Elixir make explic
 
 **Sections**:
 
-1. **Recap** — We have the full model: autograd, tokenization, math, attention. Now we make it learn.
+1. **Recap** — I have the full model: autograd, tokenization, math, attention. Now I make it learn.
 
 2. **Cross-entropy loss** — Measuring surprise
    - "If the model assigns probability 1.0 to the right answer, loss is 0. If it's guessing uniformly, loss is ln(vocab_size)."
@@ -271,6 +272,18 @@ The central question running through all 4 parts: **what does Elixir make explic
     - Livebook walkthrough: step through the algorithm
     - Livebook interactive: sliders, charts, real-time exploration
     - Credit: Karpathy's MicroGPT, growingswe walkthrough
+
+## LiveBooks
+
+When we need this, here are the two livebooks:
+
+- Code walkthru: "MicroGPTEx: How GPT Works, from Scratch"
+  <https://matthewsinclair-microgptex.hf.space/sessions/tdvjsswoeb4sgwc5wxzsszmxqzu4rq6u6yxqkq4mz52mtima>
+
+- Interactive: "MicroGPTEx: Interactive Explorations"
+  <https://matthewsinclair-microgptex.hf.space/sessions/tdvjsswoeb4sgwc5wxzsszmxqzu4rqz7h3idiysql3rez4ac>
+
+Use those links when we need to refer to the LiveBooks.
 
 ## Work Packages
 
