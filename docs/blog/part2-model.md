@@ -164,7 +164,7 @@ RMSNorm normalises a vector so its root-mean-square is approximately 1.0:
 rmsnorm(x) = x / sqrt(mean(x^2) + eps)
 ```
 
-This prevents activations from growing or shrinking uncontrollably during the forward pass. Without normalization, deep networks tend to have exploding or vanishing activations, which makes training unstable.
+The root-mean-square is the "typical magnitude" of the vector — how large its elements are on average. Dividing by the RMS rescales the vector so its typical element is roughly ±1.0. This prevents activations from growing or shrinking uncontrollably as they pass through successive layers. Without normalization, deep networks tend to have exploding or vanishing activations, which makes training unstable.
 
 ```elixir
 def rmsnorm(x, eps \\ 1.0e-5) do
@@ -301,7 +301,7 @@ Three steps:
 
 An untrained model outputs near-random logits — it has no idea what comes next. After training, the logits encode which tokens are likely to follow. The token with the highest logit is the model's best guess; softmax turns these into a probability distribution for sampling.
 
-The `kv_cache` flows in and out of the forward pass, carrying attention state from previous positions. Part 3 covers how this works in detail.
+The `kv_cache` flows in and out of the forward pass, carrying key and value vectors from previous positions so each token can attend to everything that came before it. Part 3 covers the attention mechanism in detail — the KV cache is the data structure that makes it work across time steps.
 
 ## Lists as vectors
 

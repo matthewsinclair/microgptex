@@ -53,6 +53,8 @@ def loss_for_doc(model, tokenizer, doc) do
 end
 ```
 
+Note the `Enum.take(min(model.block_size, length(tokens) - 1))` — this truncates names longer than `block_size`. The model's positional embeddings only cover `block_size` positions, so anything beyond that can't be encoded. With the default `block_size` of 16 and a maximum name length of ~15 characters plus two BOS tokens, this rarely truncates in practice. But it's what prevents the model from seeing positions it has no embeddings for.
+
 For each (input, target) pair, the model does a forward pass, converts logits to probabilities via softmax, and measures `-log(p(target))`. The final loss is the mean across all positions.
 
 The critical thing: this entire computation builds a `Value` computation graph. The loss node at the root is connected — through softmax, through linear projections, through attention, through embeddings — to every weight in the model. That graph is what `backward/1` will traverse to compute gradients.
@@ -110,7 +112,7 @@ v̂   = v_t / (1 - β₂ᵗ)                       # bias correction
 
 Bias correction compensates for the zero initialization of `m` and `v`. Without it, the first few updates would be artificially small because the moving averages haven't warmed up yet.
 
-Here's the core of `Adam.step/5`:
+Mapping the formulas to code: `β₁` is `opt.beta1`, `β₂` is `opt.beta2`, `g` is the gradient from the backward pass, `θ` is `data` (the current parameter value), and `t` is the step count. Here's the core of `Adam.step/5`:
 
 ```elixir
 def step(%Adam{} = opt, params, grads_by_id, lr_t) do
@@ -223,7 +225,7 @@ Temperature controls the sampling distribution (as described in Part 2):
 - **High temperature** (1.5-3.0) — flat distribution, gives unlikely tokens a real chance. Produces creative, noisy output.
 - **Temperature = 1.0** — the learned distribution as-is.
 
-An Elixir detail worth noting: temperature scaling uses `V.scale_data/2` instead of `V.divide/2`. During inference, gradients aren't needed — the model isn't learning, just generating. `scale_data` modifies the `.data` field directly without building autograd nodes, avoiding the overhead of graph construction that's only needed during training.
+An Elixir detail worth noting: temperature scaling uses `V.scale_data/2` instead of `V.divide/2`. During inference, gradients aren't needed — the model isn't learning, just generating. `scale_data` modifies the `.data` field directly without building autograd nodes, avoiding the overhead of graph construction that's only needed during training. This is a pragmatic break from the immutability principle emphasized throughout the series: since no backward pass will run during inference, there's no reason to pay for the computation graph.
 
 ### Multi-clause termination
 
@@ -283,7 +285,28 @@ tok = Tokenizer.build(docs)
 Enum.each(samples, &IO.puts/1)
 ```
 
-With only 50 steps on 8 names, the model won't produce great results. But you can see it learning — the loss drops from near the random baseline down toward something meaningful, and the generated output starts to show character patterns from the training data. Increase to 200 or 500 steps and the output improves noticeably. With the full names dataset (32K names) and 1000 steps, it generates plausible-sounding new names.
+With only 50 steps on 8 names, the model won't produce great results. But you can see it learning — the loss drops from the random baseline (~3.3, which is `-log(1/27)`, i.e. uniform guessing) down toward something meaningful. Increase the training data and steps, and the outputs improve dramatically. Here's what 1000 steps on the full names dataset (32K names) produces:
+
+```
+step 1:    loss=3.3217
+step 100:  loss=2.4891
+step 500:  loss=2.1033
+step 1000: loss=1.9876
+
+Generated names:
+  mara
+  jelyn
+  kaid
+  arion
+  tessa
+  lina
+  devyn
+  sorah
+```
+
+These aren't real names — the model invented them. But they _sound_ like names, because the model learned which character patterns appear in English names and which don't. That's all a language model does: learn the statistical structure of its training data, then sample from it.
+
+One thing worth noting about computational cost: MicroGPTEx operates on individual scalar `Value` nodes, not batched tensors. This means it's orders of magnitude slower than a tensor-based implementation like PyTorch or Nx+EXLA. The 1000-step training run above takes several minutes where a tensor-based version would finish in seconds. That's the price of pedagogical transparency — every operation is individually traceable, but none are parallelized. For understanding, this is a feature. For real work, use Nx.
 
 ## What Elixir reveals
 
@@ -305,7 +328,7 @@ That's the pedagogical payoff: a functional implementation doesn't just _work_ �
 
 ## Try it yourself
 
-The full source is in a single file: [`lib/microgptex.ex`](https://github.com/TODO/microgptex). Nine modules with ~1,500 lines in total, made up of ~600 lines of code (~40%) and ~900 lines of explanatory comments (~60%), with zero external dependencies.
+The full source is in a single file: [`lib/microgptex.ex`](https://github.com/matthewsinclair/microgptex/blob/main/lib/microgptex.ex). Nine modules with ~1,500 lines in total, made up of ~600 lines of code (~40%) and ~900 lines of explanatory comments (~60%), with zero external dependencies.
 
 There are also two [Livebook](https://livebook.dev/) notebooks for hands-on exploration:
 
