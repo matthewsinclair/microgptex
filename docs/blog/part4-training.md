@@ -53,9 +53,9 @@ def loss_for_doc(model, tokenizer, doc) do
 end
 ```
 
-Note the `Enum.take(min(model.block_size, length(tokens) - 1))` — this truncates names longer than `block_size`. The model's positional embeddings only cover `block_size` positions, so anything beyond that can't be encoded. With the default `block_size` of 16 and a maximum name length of ~15 characters plus two BOS tokens, this rarely truncates in practice. But it's what prevents the model from seeing positions it has no embeddings for.
-
 For each (input, target) pair, the model does a forward pass, converts logits to probabilities via softmax, and measures `-log(p(target))`. The final loss is the mean across all positions.
+
+One detail worth noting: the `Enum.take(min(model.block_size, length(tokens) - 1))` truncates names longer than `block_size`. The model's positional embeddings only cover `block_size` positions, so anything beyond that can't be encoded. With the default `block_size` of 16, this rarely truncates in practice — most names are shorter than 14 characters.
 
 The critical thing: this entire computation builds a `Value` computation graph. The loss node at the root is connected — through softmax, through linear projections, through attention, through embeddings — to every weight in the model. That graph is what `backward/1` will traverse to compute gradients.
 
@@ -285,23 +285,21 @@ tok = Tokenizer.build(docs)
 Enum.each(samples, &IO.puts/1)
 ```
 
-With only 50 steps on 8 names, the model won't produce great results. But you can see it learning — the loss drops from the random baseline (~3.3, which is `-log(1/27)`, i.e. uniform guessing) down toward something meaningful. Increase the training data and steps, and the outputs improve dramatically. Here's what 1000 steps on the full names dataset (32K names) produces:
+With only 50 steps on 8 names, the model won't produce great results. But you can see it learning — the loss drops from the random baseline (~3.3, which is `-log(1/27)`, i.e. uniform guessing) down toward something meaningful. Increase the training data and steps, and the outputs improve dramatically. Here's roughly what to expect from 1000 steps on the full names dataset (32K names):
 
 ```
-step 1:    loss=3.3217
-step 100:  loss=2.4891
-step 500:  loss=2.1033
-step 1000: loss=1.9876
+# Illustrative — run Microgptex.run() for actual output
+step 1:    loss≈3.30
+step 100:  loss≈2.50
+step 500:  loss≈2.10
+step 1000: loss≈1.95
 
-Generated names:
-  mara
+Sample generated names:
   jelyn
   kaid
   arion
-  tessa
-  lina
-  devyn
   sorah
+  devyn
 ```
 
 These aren't real names — the model invented them. But they _sound_ like names, because the model learned which character patterns appear in English names and which don't. That's all a language model does: learn the statistical structure of its training data, then sample from it.
