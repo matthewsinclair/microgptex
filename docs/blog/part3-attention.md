@@ -57,16 +57,16 @@ attn_logits =
 attn_weights = Math.softmax(attn_logits)
 ```
 
-**3. Weighted sum of values.** Multiply each value vector by its attention weight and sum. Positions with high attention weights contribute more to the output:
+**3. Weighted sum of values.** Multiply each value vector by its attention weight and sum. Positions with high attention weights contribute more to the output. This is done independently for each dimension of the head:
 
 ```elixir
-# For each dimension j in the output:
+# For each dimension j in 0..(head_dim - 1):
 Enum.zip(attn_weights, v_h)
 |> Enum.map(fn {w, v_t} -> V.mul(w, Enum.at(v_t, j)) end)
 |> V.sum()
 ```
 
-The result is a vector that blends information from all previous positions, weighted by relevance to the current query.
+The outer loop (not shown here — see `weighted_sum/3` in the source) iterates `j` over every dimension, producing one output scalar per dimension. The result is a vector that blends information from all previous positions, weighted by relevance to the current query.
 
 ### The scaling factor
 
@@ -116,7 +116,7 @@ x =
   |> Math.add_vec(x_residual)
 ```
 
-The `Wo` projection mixes information across heads — it's where the model combines the different perspectives into a single representation.
+The `Wo` projection mixes information across heads. After concatenation, dimensions from different heads are adjacent but haven't interacted — head 0's output knows nothing about head 1's. `Wo` is the only place where cross-head information flows, combining the different perspectives into a single representation.
 
 ## The KV cache: remembering past positions
 
@@ -157,6 +157,8 @@ The cache is structured as a map keyed by layer index: `%{0 => %{keys: [...], va
 
 During training, the cache is threaded through `Enum.reduce` over all positions in the document — it grows as each position is processed. During generation, the same cache persists across multiple calls to `gpt/4`, one per generated token. This avoids recomputing attention over past positions, which is the whole point of the KV cache optimization.
 
+A side effect worth noting: the KV cache naturally enforces **causal masking**. In the standard transformer paper ("Attention Is All You Need"), future positions are explicitly masked out so the model can only attend to the past. Here, there's nothing to mask — when processing position 3, the cache only contains keys and values from positions 0, 1, and 2. Future positions haven't been computed yet, so they can't be attended to. The sequential, one-token-at-a-time architecture makes causality automatic.
+
 ## Residual connections and normalization
 
 The attention output doesn't replace the input — it's _added_ to it:
@@ -167,7 +169,7 @@ x = Math.add_vec(attention_output, x_residual)
 
 This is a residual connection: `x + f(x)`. The input passes through both the attention computation _and_ a direct shortcut. Why?
 
-Residual connections solve the vanishing gradient problem in deep networks. Without them, gradients must flow back through every layer during backpropagation. Each layer's operations can shrink the gradients, and after enough layers, they become too small to drive learning. The shortcut gives gradients a direct path — even if the attention computation zeroes out the gradient, the residual path preserves it.
+Residual connections solve the vanishing gradient problem in deep networks. Without them, gradients must flow back through every layer during backpropagation. Each layer's operations can shrink the gradients — if each layer multiplies gradients by 0.5, after 10 layers you're at 0.001, effectively zero. The shortcut gives gradients a direct path — even if the attention computation zeroes out the gradient, the residual path preserves it.
 
 In practice, residual connections are why deep networks can train at all.
 
