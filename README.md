@@ -123,6 +123,8 @@ Inspired by [Andrej Karpathy's](https://karpathy.github.io/) [MicroGPT](https://
 
 Elixir version, LiveBooks, and blog created by [Matthew Sinclair](https://matthewsinclair.com/).
 
+Thanks to [@chickensintrees](https://github.com/chickensintrees) for the review PRs. 
+
 ## License
 
 MIT
