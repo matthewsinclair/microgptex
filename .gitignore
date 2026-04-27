@@ -40,3 +40,6 @@ microgptex-*.tar
 
 # Do not commit .claude to Git
 .claude
+
+# AGENTS.md regeneration safety net (intent agents sync writes this; transient).
+/AGENTS.md.bak
