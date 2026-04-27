@@ -38,8 +38,8 @@ microgptex-*.tar
 # Ignore Intent backups
 .backup
 
-# Do not commit .claude to Git
-.claude
+# Per-developer Claude Code settings (paths and tool allowlists vary).
+.claude/settings.local.json
 
 # AGENTS.md regeneration safety net (intent agents sync writes this; transient).
 /AGENTS.md.bak
