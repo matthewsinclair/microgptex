@@ -1,6 +1,6 @@
 # microgptex Project Guidelines
 
-This is an Intent v2.8.0 project.
+This is an Intent v2.11.5 project.
 
 ## Project Structure
 
