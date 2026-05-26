@@ -97,13 +97,6 @@ Every `with` clause must have a matching `else` clause or all called functions m
 
 <!-- Add project-specific rules below this line -->
 
-## Language Packs
-
-<!-- intent-lang-packs:start -->
-
-- **elixir** -- rule pack at `intent/plugins/claude/rules/elixir/`; concretised RULES at `intent/llm/RULES-elixir.md`.
-<!-- intent-lang-packs:end -->
-
 ## Project-Specific Rules
 
 <!-- Add rules unique to this project here -->

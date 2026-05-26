@@ -1,4 +1,8 @@
-# About These Assets
+---
+verblock: "26 May 2026:v0.1: Matthew Sinclair - Initial version"
+---
+
+# README
 
 The files in this directory were generated using [NotebookLM](https://notebooklm.google.com/), prompted with the MicroGPTEx blog posts, README, and source code.
 

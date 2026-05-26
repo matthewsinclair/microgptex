@@ -5,6 +5,7 @@
   "created": "2026-03-02",
   "st_prefix": "ST",
   "languages": [
-    "shell"
+    "shell",
+    "elixir"
   ]
 }
