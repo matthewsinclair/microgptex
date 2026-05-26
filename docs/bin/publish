@@ -1,0 +1,263 @@
+#!/bin/bash
+#
+# MicroGPTEx Documentation Publisher
+#
+# Generates an aggregated Markdown file and a formatted PDF from a documentation
+# set, using mdagg for aggregation and pandoc + typst for PDF generation.
+#
+# Usage: docs/bin/publish [docset] [options]
+#   docset:  blog | 20-concepts | all
+#   --no-frontpage  Skip the logo on the title page
+#   -v, --verbose   Show detailed output
+#   -h, --help      Show this help message
+#
+# Output: docs/<docset>/_out/<name>-v<VERSION>.{md,pdf}
+
+set -e
+
+VERBOSE=false
+USE_FRONTPAGE=true
+DOCSET=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -v|--verbose) VERBOSE=true; shift ;;
+        --no-frontpage) USE_FRONTPAGE=false; shift ;;
+        -h|--help)
+            HELP_FILE="$(dirname "${BASH_SOURCE[0]}")/README.md"
+            if [[ -f "$HELP_FILE" ]]; then
+                if command -v glow >/dev/null 2>&1; then glow -w 100 "$HELP_FILE"
+                elif command -v bat >/dev/null 2>&1; then bat --style=plain --language=markdown "$HELP_FILE"
+                else cat "$HELP_FILE"; fi
+            else
+                echo "Help file not found: $HELP_FILE"
+            fi
+            exit 0 ;;
+        blog|20-concepts|all) DOCSET="$1"; shift ;;
+        *) echo "Unknown option or docset: $1"; echo "Use -h for help"; exit 1 ;;
+    esac
+done
+
+if [[ -z "$DOCSET" ]]; then
+    echo "Usage: docs/bin/publish {blog,20-concepts,all} [--no-frontpage] [-v]"
+    exit 1
+fi
+
+# Locate project root (docs/bin/publish -> project root is two levels up)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+DOCS_DIR="$PROJECT_ROOT/docs"
+BIN_DIR="$DOCS_DIR/bin"
+LOGO_SRC="$PROJECT_ROOT/design/microgptex-logo.svg"
+
+# Version: prefer a VERSION file, fall back to mix.exs, then a default.
+if [[ -f "$PROJECT_ROOT/VERSION" ]]; then
+    VERSION=$(tr -d '\n' < "$PROJECT_ROOT/VERSION")
+elif [[ -f "$PROJECT_ROOT/mix.exs" ]]; then
+    VERSION=$(grep -E '^[[:space:]]*version:' "$PROJECT_ROOT/mix.exs" | head -1 | sed -E 's/.*version:[[:space:]]*"([^"]+)".*/\1/')
+fi
+VERSION=${VERSION:-0.1.0}
+PUB_DATE=$(date +"%B %Y")
+
+log() { if [ "$VERBOSE" = true ]; then echo "$@"; fi; }
+
+check_dep() {
+    command -v "$1" >/dev/null 2>&1 || { echo "Error: $1 is required but not installed."; exit 1; }
+}
+check_dep mdagg
+check_dep pandoc
+check_dep typst
+
+# Per-docset configuration.
+# Format: DOC_SUBDIR|OUTPUT_BASE|TITLE|SUBTITLE|DESC1|DESC2|GLOB
+get_config() {
+    case "$1" in
+        blog)
+            echo "blog|microgptex-building-gpt-from-scratch|Building GPT from Scratch|A Four-Part Series in Elixir|MicroGPTEx|Karpathy's MicroGPT, translated to idiomatic Elixir|part*.md" ;;
+        20-concepts)
+            echo "20-concepts|20-ai-concepts-to-understand-in-2026|20 Concepts To Understand AI in 2026|A Field Guide|From neural networks to diffusion models|Twenty ideas that explain how modern AI works|[1-5]*.md" ;;
+    esac
+}
+
+publish_docset() {
+    local docset="$1" config
+    config=$(get_config "$docset")
+    IFS='|' read -r DOC_SUBDIR OUTPUT_BASE TITLE SUBTITLE DESC1 DESC2 GLOB <<< "$config"
+
+    local DOC_DIR="$DOCS_DIR/$DOC_SUBDIR"
+    local OUT_DIR="$DOC_DIR/_out"
+    local OUTPUT_VERSIONED="${OUTPUT_BASE}-v${VERSION}"
+
+    echo "=== Publishing: $OUTPUT_VERSIONED ==="
+
+    mkdir -p "$OUT_DIR"
+
+    # Step 1: gather the source files (sorted) and build an mdagg config, then aggregate.
+    echo "Step 1: Aggregating markdown..."
+    local files
+    files=$(cd "$DOC_DIR" && ls -1 $GLOB 2>/dev/null | sort)
+    if [[ -z "$files" ]]; then echo "  No files matching '$GLOB' in $DOC_DIR"; exit 1; fi
+    log "  Files: $(echo "$files" | tr '\n' ' ')"
+
+    {
+        echo "settings:"
+        echo "  page_breaks: true"
+        echo "  section_dividers: false"
+        echo "  strip_back_links: true"
+        echo "  strip_front_matter: true"
+        echo "  working_dir: \"..\""
+        echo "files:"
+        while IFS= read -r f; do echo "  - file: \"$f\""; done <<< "$files"
+    } > "$OUT_DIR/mdagg.yaml"
+
+    cd "$OUT_DIR"
+    local MDAGG_V=""; [ "$VERBOSE" = true ] && MDAGG_V="-v"
+    mdagg mdagg.yaml -o "${OUTPUT_BASE}.md" $MDAGG_V
+
+    # Step 2: post-process the aggregated markdown for PDF compatibility.
+    echo "Step 2: Post-processing..."
+
+    # Linked remote images, eg [![alt](badge.svg)](target) -> [alt](target).
+    sed -i '' -E 's/\[!\[([^]]*)\]\([^)]*\)\]\((https?:[^)]+)\)/[\1](\2)/g' "${OUTPUT_BASE}.md"
+    # Any remaining standalone remote images -> plain links; typst cannot fetch URLs.
+    sed -i '' -E 's/!\[([^]]*)\]\((https?:[^)]+)\)/[\1](\2)/g' "${OUTPUT_BASE}.md"
+
+    # HTML page-break divs -> Typst raw pagebreak.
+    PAGEBREAK='```{=typst}\
+#pagebreak()\
+```'
+    sed -i '' "s/<div style=\"page-break-after: always; break-after: page;\"><\/div>/$PAGEBREAK/g" "${OUTPUT_BASE}.md"
+    sed -i '' "s/<div style=\"page-break-after: always;\"><\/div>/$PAGEBREAK/g" "${OUTPUT_BASE}.md"
+
+    # Internal cross-doc .md links -> plain text (they cannot resolve inside one PDF).
+    sed -i '' -E 's/\[([^]]+)\]\([0-9A-Za-z._-]+\.md\)/\1/g' "${OUTPUT_BASE}.md"
+
+    # Escape @-mentions so pandoc does not treat them as citation keys.
+    sed -i '' -E 's/@([A-Za-z])/\\@\1/g' "${OUTPUT_BASE}.md"
+
+    # Local images: typst infers format from the file extension, but some of these
+    # files are mislabelled (eg JPEG bytes under a .png name). Symlink each into
+    # _out/ under a name matching its TRUE format and rewrite the refs to match, so
+    # typst (rooted at _out/) decodes them. Symlinks are cleaned up after the PDF.
+    local base newname ext
+    for asset in "$DOC_DIR"/*.png "$DOC_DIR"/*.jpg "$DOC_DIR"/*.jpeg; do
+        [ -e "$asset" ] || continue
+        base=$(basename "$asset")
+        case "$(file -b --mime-type "$asset")" in
+            image/jpeg) ext=jpg ;;
+            image/png)  ext=png ;;
+            *)          ext="${base##*.}" ;;
+        esac
+        newname="${base%.*}.${ext}"
+        ln -sf "$asset" "$OUT_DIR/$newname"
+        [ "$newname" != "$base" ] && sed -i '' -E "s#\]\(${base}\)#](${newname})#g" "${OUTPUT_BASE}.md"
+    done
+    [ "$USE_FRONTPAGE" = true ] && [ -f "$LOGO_SRC" ] && ln -sf "$LOGO_SRC" "$OUT_DIR/microgptex-logo.svg"
+
+    # Step 3: prepend a Typst title page + native table of contents.
+    echo "Step 3: Title page + ToC..."
+    cat > "_final.md" << 'TYPST_HEADER'
+```{=typst}
+#set page(margin: (x: 0.85in, y: 0.85in), numbering: none)
+#set text(font: "Helvetica Neue", size: 11pt)
+#show raw: set text(font: "Menlo", size: 9.5pt)
+
+#show heading.where(level: 1): it => {
+  v(1.5em)
+  block(breakable: false)[
+    #text(fill: rgb("#1e40af"), size: 18pt, weight: "bold", it.body)
+    #v(3em, weak: true)
+  ]
+}
+#show heading.where(level: 2): it => {
+  v(1.2em)
+  block(breakable: false)[
+    #text(fill: rgb("#2563eb"), size: 14pt, weight: "semibold", it.body)
+    #v(2.5em, weak: true)
+  ]
+}
+#show heading.where(level: 3): it => {
+  v(1em)
+  block(breakable: false)[
+    #text(fill: rgb("#3b82f6"), size: 12pt, weight: "medium", it.body)
+    #v(2em, weak: true)
+  ]
+}
+#show link: set text(fill: rgb("#2563eb"))
+#show image: it => align(center, it)
+#set table(align: left)
+#show table.cell: set par(justify: false)
+
+#v(14%)
+#align(center)[
+  __LOGO_BLOCK__
+  #text(size: 34pt, weight: "bold", fill: rgb("#1e40af"))[__TITLE__]
+  #v(0.5cm)
+  #text(size: 18pt, weight: "medium", fill: rgb("#334155"))[__SUBTITLE__]
+  #v(2cm)
+  #line(length: 40%, stroke: 0.5pt + rgb("#cbd5e1"))
+  #v(1cm)
+  #text(size: 12pt, fill: rgb("#64748b"))[__VERSION__]
+  #v(0.5cm)
+  #text(size: 11pt, fill: rgb("#94a3b8"))[__DESC1__]
+  #v(0.3cm)
+  #text(size: 10pt, fill: rgb("#94a3b8"))[__DESC2__]
+]
+#pagebreak()
+
+#outline(title: "Contents", depth: 1)
+#pagebreak()
+
+#set page(numbering: "1")
+#counter(page).update(1)
+```
+
+TYPST_HEADER
+
+    sed -i '' "s/__TITLE__/$TITLE/g" "_final.md"
+    sed -i '' "s/__SUBTITLE__/$SUBTITLE/g" "_final.md"
+    sed -i '' "s/__DESC1__/$DESC1/g" "_final.md"
+    sed -i '' "s/__DESC2__/$DESC2/g" "_final.md"
+    sed -i '' "s/__VERSION__/Version $VERSION | $PUB_DATE/g" "_final.md"
+
+    # Logo on the title page (absolute path; '|' delimiter avoids the slashes in the path).
+    if [ "$USE_FRONTPAGE" = true ] && [ -f "$LOGO_SRC" ]; then
+        sed -i '' "s|__LOGO_BLOCK__|#image(\"microgptex-logo.svg\", width: 1.6in)\\
+  #v(0.8cm)|" "_final.md"
+    else
+        sed -i '' "s|__LOGO_BLOCK__||" "_final.md"
+    fi
+
+    cat "${OUTPUT_BASE}.md" >> "_final.md"
+    mv "_final.md" "${OUTPUT_VERSIONED}.md"
+    rm -f "${OUTPUT_BASE}.md"
+
+    # Step 4: generate the PDF with pandoc + typst.
+    echo "Step 4: Generating PDF..."
+    pandoc "${OUTPUT_VERSIONED}.md" \
+        -o "${OUTPUT_VERSIONED}.pdf" \
+        --pdf-engine=typst \
+        --template="$BIN_DIR/minimal.typst" \
+        --lua-filter="$BIN_DIR/fix-table-widths.lua" \
+        --lua-filter="$BIN_DIR/keep-together.lua" \
+        --resource-path="$DOC_DIR:$OUT_DIR"
+
+    echo ""
+    # Clean up transient processing artifacts; keep only the versioned .md + .pdf.
+    find "$OUT_DIR" -maxdepth 1 -type l -delete 2>/dev/null || true
+    rm -rf "$OUT_DIR"/media "$OUT_DIR"/media-* 2>/dev/null || true
+    rm -f "$OUT_DIR/mdagg.yaml"
+
+    echo "Output files:"
+    echo "  Markdown: $OUT_DIR/${OUTPUT_VERSIONED}.md"
+    echo "  PDF:      $OUT_DIR/${OUTPUT_VERSIONED}.pdf"
+    echo ""
+}
+
+if [ "$DOCSET" = "all" ]; then
+    for ds in blog 20-concepts; do publish_docset "$ds"; done
+    echo "=== All document sets published ==="
+else
+    publish_docset "$DOCSET"
+    echo "=== Done ==="
+fi

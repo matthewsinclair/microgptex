@@ -1,0 +1,3 @@
+# Publishing build artifacts (aggregated markdown + generated PDFs).
+# Regenerate any time with: docs/bin/publish {blog,20-concepts,all}
+_out/
