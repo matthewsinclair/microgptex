@@ -41,7 +41,7 @@ The 2017 transformer architecture is still recognisable in every current frontie
 
 ### Why it matters
 
-The transformer is the reason the AI landscape looks the way it does in 2026. Previous architectures had hard scaling limits — they got worse, not better, with more layers, more data, or longer sequences. The transformer scales cleanly on all three axes, and modern GPU and TPU hardware is optimised for exactly the matrix operations it requires. The result is that a single architecture covers text, code, images, audio, and protein sequences, across models ranging from tens of millions to hundreds of billions of parameters.
+The transformer is the reason AI looks the way it does in 2026. Previous architectures had hard scaling limits — they got worse, not better, with more layers, more data, or longer sequences. The transformer scales cleanly on all three axes, and modern GPU and TPU hardware is optimised for exactly the matrix operations it requires. The result is that a single architecture covers text, code, images, audio, and protein sequences, across models ranging from tens of millions to hundreds of billions of parameters.
 
 For anyone building with AI — as a developer, a product designer, or an informed user — the transformer is the shared substrate. The context window, the tokenisation, the attention patterns, the distinction between a base model and a fine-tuned one: all of these make sense only in relation to this architecture. Part 2 starts from here and asks what happens when you take a trained transformer and use it as a language model.
 

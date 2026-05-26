@@ -8,7 +8,7 @@ verblock: "26 May 2026:v0.1: Matthew Sinclair - Context Window"
 
 ![A transformer attending across a sequence of tokens, with a boundary marking the context limit](207.png)
 
-Every transformer-based language model has a hard limit on how much text it can process at once. That limit — the **context window** — is measured in tokens, and it encompasses everything the model can see when it generates a reply: your system prompt, the conversation so far, any documents you have pasted in, and the reply the model is currently composing. Exceed the window and the model cannot attend to what has fallen off the edge. Understanding this constraint, and the research that has worked to stretch and work around it, is fundamental to understanding what models can and cannot do in practice.
+Every transformer-based language model has a hard limit on how much text it can process at once. That limit — the **context window** — is measured in tokens, and it encompasses everything the model can see when it generates a reply: your system prompt, the conversation so far, any documents you have pasted in, and the reply the model is currently composing. Exceed the window and the model cannot attend to what has fallen off the edge. Understanding this constraint, and the research that has worked to stretch and sidestep it, is central to understanding what models can and cannot do in practice.
 
 ### What it is
 

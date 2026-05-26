@@ -32,7 +32,7 @@ Multi-head attention, also introduced in the original Vaswani et al. paper, runs
 
 ### Why it matters
 
-Attention is the idea that unlocked modern AI. Before it, language models processed sequences one step at a time, with information about earlier tokens degrading as the sequence grew longer. Attention makes the full sequence simultaneously available to every computation, and it does so in a way that can be parallelised efficiently on modern hardware. The jump from recurrent models to attention-based transformers is one of the few moments in recent AI history that looks like a genuine qualitative shift, not just incremental scaling.
+Attention reshaped how language models work. Before it, models processed sequences one step at a time, with information about earlier tokens degrading as the sequence grew longer. Attention makes the full sequence available to every computation at once, and does so in a way that parallelises efficiently on modern hardware. That combination — global access plus parallelism — is what made training at today's scale practical, and it is why the transformer (Concept 5) displaced the recurrent architectures that came before.
 
 For practitioners, attention is also the mechanism behind many of the interpretability tools people reach for when trying to understand what a model is doing. Examining attention weights can reveal which parts of a prompt the model is drawing on when producing a given output — though those weights are a partial and sometimes misleading window into the actual computation.
 
