@@ -1,17 +1,18 @@
 ---
-verblock: "03 Mar 2026:v0.2: matts - ST0002 complete, updated WIP"
+verblock: "27 May 2026:v0.3: matts - All three STs closed; no active work"
 ---
 
 # Work In Progress
 
 ## Current Focus
 
-No active work. Both steel threads are complete.
+No active work. All steel threads are complete and registered under `intent/st/COMPLETED/`. `intent st list` is empty.
 
 ## Completed Steel Threads
 
-- **ST0001**: MicroGPTEx implementation — 9 modules, single file, zero deps, comprehensive tests, rich moduledocs, Livebook walkthrough. Status: Done.
-- **ST0002**: Blog post series — 4-part series (autograd, model, attention, training), all written, reviewed, polished. Australian/British English, depersonalised technical voice, Karpathy/growingswe credit amplified. Status: Done.
+- **ST0001**: MicroGPTEx implementation — 9 modules, single file, zero deps, comprehensive tests, rich moduledocs, Livebook walkthrough + interactive (Kino) notebook. All 9 WPs Done. Status: Done.
+- **ST0002**: Blog post series — 4-part series (autograd, model, attention, training), all written, reviewed, polished. Australian/British English, depersonalised technical voice, Karpathy/growingswe credit. All 5 WPs Done. Status: Done.
+- **ST0003**: 20 AI Concepts explainer series — 24-doc set in `docs/20-concepts/` (ToC, README, 20 chapters, recap, references) + 21 images. Refs verified (zero hallucinated), detroped, and published via the mdagg + pandoc/typst pipeline. Status: Done.
 
 ## Deliverables
 
@@ -27,9 +28,13 @@ No active work. Both steel threads are complete.
 - `docs/blog/part3-attention.md` — "How Tokens Talk to Each Other"
 - `docs/blog/part4-training.md` — "Learning and Dreaming"
 
+### 20 Concepts
+
+- `docs/20-concepts/` — 24 markdown docs + 21 images; published PDF set via mdagg + pandoc/typst
+
 ### Livebooks
 
-- `notebooks/walkthrough.livemd` — step-by-step code walkthrough (7 chapters, 12 Mermaid diagrams)
+- `notebooks/walkthrough.livemd` — step-by-step code walkthrough with Mermaid diagrams
 - `notebooks/interactive.livemd` — Kino-based interactive explorations (softmax, temperature, gradients, training, attention)
 
 ### Explainer Assets
@@ -38,10 +43,7 @@ No active work. Both steel threads are complete.
 
 ## Upcoming Work
 
-- Push to GitHub and verify "Run in Livebook" badge URLs work
-- Publish blog posts (platform TBD)
-- Fix Mermaid diagram rendering issues in Livebook (some diagrams show "Unsupported markdown: list")
-- Consider WP-09 interactive Livebook enhancements (plan exists at `.claude/plans/snug-mixing-patterson.md`)
+None tracked. Project deliverables are complete and published.
 
 ## Notes
 
