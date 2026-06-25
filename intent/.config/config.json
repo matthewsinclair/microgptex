@@ -6,7 +6,6 @@
   "st_prefix": "ST",
   "languages": [
     "shell",
-    "elixir",
-    "lua"
+    "elixir"
   ]
 }

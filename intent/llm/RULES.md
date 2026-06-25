@@ -102,7 +102,6 @@ Every `with` clause must have a matching `else` clause or all called functions m
 <!-- intent-lang-packs:start -->
 
 - **elixir** -- rule pack at `intent/plugins/claude/rules/elixir/`; concretised RULES at `intent/llm/RULES-elixir.md`.
-- **lua** -- rule pack at `intent/plugins/claude/rules/lua/`; concretised RULES at `intent/llm/RULES-lua.md`.
 <!-- intent-lang-packs:end -->
 
 ## Project-Specific Rules
