@@ -1,13 +1,98 @@
 # microgptex -- devbin configuration.
 #
-# Written by: devbin install. Every key, annotated, is vendored beside this
-# file at bin/.devbin/lib/config.reference.yaml.
+# Written by devbin install, filled in by ST0002 WP-04. Every key, annotated,
+# is vendored beside this file at bin/.devbin/lib/config.reference.yaml.
+#
+# This project had no launcher to migrate, so nothing here is derived from a
+# predecessor: every entry is a fact about MicroGPTEx read out of the tree.
+# Where the catalogue default is already right there is deliberately NO entry --
+# config carries the differences, not a second copy of the catalogue.
 
 project:
   name: microgptex
   alias: mg
+
+  # devbin's `languages:` is GATE SCOPE, not project composition. Intent
+  # declares [shell, elixir] for this tree and that is right for critics and
+  # skills -- but the only shell here is docs/bin/publish and Intent's own hook
+  # scripts, neither of which has a devbin gate to run: no bats suite, no shell
+  # sources of this project's own. Declaring shell would light up test.shell and
+  # a shell arm of check.format with nothing behind either. The whole fleet is
+  # declared this way -- Laksa drops shell for this reason, Baize keeps it
+  # because it has a real bats suite over its vendored lib.
   languages:
     - elixir
 
+  # mix.exs is the one version home: no VERSION file, no sidecars. This agrees
+  # with what docs/bin/publish already does -- it prefers a VERSION file and
+  # falls back to mix.exs, and there is none, so mix.exs is the answer by both
+  # paths rather than two facts that could drift.
+  version_from: mix.exs
+
 # The devbin this project expects. Enforced by: devbin doctor
 devbin_version: "^0.1.0"
+
+help:
+  tagline: "dev launcher for MicroGPTEx -- the paper, and the implementation it describes"
+
+docs:
+  # `docs treeindex` refuses the project root and requires a list. lib/ and
+  # test/ are this project's code; the documentation sets under docs/ are prose,
+  # which is not what a per-subdirectory code index is for.
+  treeindex_dirs:
+    - lib
+    - test
+
+commands:
+  # Five built-ins are switched off because the facts they assume are not true
+  # here. MicroGPTEx is a paper and the small implementation it describes: one
+  # module, one test file, no application to run and no database.
+
+  server:
+    # No Phoenix and nothing to serve; the catalogue row is `mix phx.server`.
+    enabled: false
+
+  cli:
+    # No escript, and no `mix microgptex.cli` task. This is the exact case
+    # lib/cmd/repl's header names at Conflab: what is declined here is a
+    # command that would be broken, not one the project merely does without.
+    enabled: false
+
+  repl:
+    # Follows cli -- the builtin runs `mix <name>.cli repl`, which does not
+    # exist here. `iex` stays: `iex -S mix` is real and is the way in.
+    enabled: false
+
+  db:
+    # No Ecto, no repo, no database. Every db option would name a `mix ecto.*`
+    # task this project does not have.
+    enabled: false
+
+  build:
+    # doctor reported this at install as "offered with nothing to run". It is
+    # switched off rather than pointed at `mix compile`, because compilation is
+    # already gated by `check compile` under --warnings-as-errors and a second
+    # name for the same work is the Highlander breach. This project's real
+    # build artefact is a PDF, and that is `docs publish`.
+    enabled: false
+
+  docs:
+    options:
+      publish:
+        # THE REAL DOC BUILD, and for this project the point of the install.
+        # docs/bin/publish aggregates a documentation set with mdagg and renders
+        # it to PDF through pandoc + typst (a typst template and two lua pandoc
+        # filters). It takes the docset as its argument and devbin passes
+        # trailing argv straight through, so the set of docsets stays declared
+        # in ONE place -- the publisher's own case statement -- instead of being
+        # copied into a devbin option per set.
+        #
+        # in_all: false because `docs all` must stay a cheap, argument-free
+        # sweep. Publishing shells out to pandoc and typst and REQUIRES a
+        # docset; called bare it exits 1 on its own usage line, which is the
+        # honest answer rather than a default devbin invented.
+        summary: "Build a documentation set to Markdown + PDF (blog | 20-concepts | all)"
+        run: docs/bin/publish
+        grammar: generic
+        log: PUBLISH
+        in_all: false
