@@ -1,0 +1,9 @@
+# The vendored devbin runtime is not this project's to format (Devbin issue
+# 0008): a formatting hook that rewrites bin/.devbin/lib/ does so inside an
+# install/upgrade commit and breaks the vendored manifest one doctor later.
+#
+# This project's hook is the raw-prettier shape rather than the fleet's, so the
+# fence was proven here before the install: without it a probe .md under
+# bin/.devbin/lib/ came back rewritten; with it, byte-identical, while a project
+# .md staged alongside was still formatted normally.
+bin/.devbin/lib/
