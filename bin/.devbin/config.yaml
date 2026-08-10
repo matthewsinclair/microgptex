@@ -1,0 +1,13 @@
+# microgptex -- devbin configuration.
+#
+# Written by: devbin install. Every key, annotated, is vendored beside this
+# file at bin/.devbin/lib/config.reference.yaml.
+
+project:
+  name: microgptex
+  alias: mg
+  languages:
+    - elixir
+
+# The devbin this project expects. Enforced by: devbin doctor
+devbin_version: "^0.1.0"
