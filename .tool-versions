@@ -1,0 +1,17 @@
+# Tool versions for MicroGPTEx -- a DECLARATION, not a mechanism.
+#
+# No version manager is in use on this machine (erlang and elixir are homebrew
+# provided) and this project has no CI, so nothing here is obliged to obey this
+# file. Its one real consumer is `bin/devbin check toolchain`, which compares
+# these pins against the running toolchain and fails when they diverge.
+#
+# Policy (hv): run the latest, and keep this file matching what you actually
+# run. These are the fleet's pins as of 2026-08-10 -- identical to Conflab,
+# Laksa, Baize and Lamplight.
+#
+# mix.exs requires `~> 1.19`, which the pin below satisfies; the pin is the
+# tighter statement of the two and this file is its one home.
+#
+# Lines are parsed as `^<tool> <version>` -- keep comments free-form above them.
+erlang 29.0.5
+elixir 1.20.3-otp-29
