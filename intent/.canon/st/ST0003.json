@@ -1,0 +1,13 @@
+{
+  "schema": "intent/thread@3.0",
+  "id": "ST0003",
+  "title": "20 AI Concepts explainer series",
+  "slug": "20-ai-concepts-explainer-series",
+  "status": "completed",
+  "created": "2026-05-26",
+  "completed": "2026-05-26",
+  "objective": "Produce a self-contained, publication-quality explainer doc set — \"20 Concepts To Understand AI in 2026\" — with one chapter per concept across four parts (each 2-3 pages with verified references), plus a recap and a consolidated references doc. Lives in `docs/20-concepts/`.",
+  "context": "Prompted by a [@sairahul1](https://xcancel.com/sairahul1/status/2057740928908161461?s=43) thread listing 20 concepts, anchored to Stanford CS229's \"Building Large Language Models\" lecture. Source material and topic images were dropped into `docs/20-concepts/`; the source `.md`/`.pdf` were accidentally committed and pushed, so the thread also covers a git-history cleanup. House rules: British/Australian prose with American code identifiers, depersonalised voice, xcancel never x.com, and ZERO hallucinated references (every link verified). See `design.md` for structure and conventions, `impl.md` for as-built state.",
+  "body": "",
+  "preamble": ""
+}

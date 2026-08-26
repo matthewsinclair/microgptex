@@ -1,11 +1,12 @@
 {
-  "intent_version": "2.13.0",
-  "project_name": "microgptex",
   "author": "matts",
   "created": "2026-03-02",
-  "st_prefix": "ST",
+  "intent_version": "3.0.0",
   "languages": [
     "shell",
     "elixir"
-  ]
+  ],
+  "project_id": "4ae56689-c892-4f39-adb9-dc95cf4c30f2",
+  "project_name": "microgptex",
+  "st_prefix": "ST"
 }
