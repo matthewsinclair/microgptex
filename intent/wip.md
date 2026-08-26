@@ -6,7 +6,7 @@ verblock: "27 May 2026:v0.3: matts - All three STs closed; no active work"
 
 ## Current Focus
 
-No active work. All steel threads are complete and registered under `intent/st/COMPLETED/`. `intent st list` is empty.
+No active work. All steel threads are complete and registered under the store (`intent st list --all`). `intent st list` is empty.
 
 ## Completed Steel Threads
 

@@ -6,11 +6,11 @@ MicroGPTEx — a functional, pedagogical GPT trainer in Elixir. Faithful transla
 
 ## What's Done
 
-All three steel threads are complete and live under `intent/st/COMPLETED/`. `intent st list` is empty.
+All three steel threads are complete and live under the store (`intent st list --all`). `intent st list` is empty.
 
-- **ST0001** (implementation): 9 modules in `lib/microgptex.ex`, comprehensive tests, rich moduledocs, Livebook walkthrough + interactive notebook. All 9 WPs Done. See `intent/st/COMPLETED/ST0001/info.md`.
-- **ST0002** (blog series): 4-part series in `docs/blog/`. All written, reviewed, polished with Australian/British English and depersonalised technical voice. All 5 WPs Done. See `intent/st/COMPLETED/ST0002/info.md`.
-- **ST0003** (20 AI Concepts explainer): 24-doc set in `docs/20-concepts/`, refs verified, detroped, and published via the mdagg + pandoc/typst pipeline. See `intent/st/COMPLETED/ST0003/info.md`.
+- **ST0001** (implementation): 9 modules in `lib/microgptex.ex`, comprehensive tests, rich moduledocs, Livebook walkthrough + interactive notebook. All 9 WPs Done. See `the store (`intent st show <ID>`) ST0001/info.md`.
+- **ST0002** (blog series): 4-part series in `docs/blog/`. All written, reviewed, polished with Australian/British English and depersonalised technical voice. All 5 WPs Done. See `the store (`intent st show <ID>`) ST0002/info.md`.
+- **ST0003** (20 AI Concepts explainer): 24-doc set in `docs/20-concepts/`, refs verified, detroped, and published via the mdagg + pandoc/typst pipeline. See `the store (`intent st show <ID>`) ST0003/info.md`.
 
 ## Key Files
 
