@@ -7,3 +7,27 @@
 # bin/.devbin/lib/ came back rewritten; with it, byte-identical, while a project
 # .md staged alongside was still formatted normally.
 bin/.devbin/lib/
+
+# Generated views have ONE writer, and it is the renderer (hv, 2026-08-19,
+# ST0056 AC-03.17 in Intent's own tree). The hook above is the same one that
+# made the devbin fence necessary -- a raw `prettier --write` over staged .md
+# with a `git add` of its own rewrite -- so it is a second writer of every
+# generated view here too.
+#
+# MEASURED HERE, 2026-08-26: NO SKEW TODAY -- `intent doctor` is 0 findings
+# over 17 views and prettier reproduces every tracked view byte-for-byte. This
+# is preventive. The failure it prevents is not a bad render but an unfixable
+# one: once the two writers disagree, `sync --to-disk` repairs the file and the
+# next commit undoes the repair, so `doctor` reports the skew for ever.
+#
+# Only renderer-owned paths are listed. design.md / impl.md / tasks.md /
+# intent/wip.md / intent/done.md are authored, stay formatted, and are
+# deliberately absent -- verified against the renderer in a sibling v3 repo by
+# perturb-and-resync, not assumed from the directory they sit in.
+#
+# `**` rather than `*`: .prettierignore takes gitignore semantics, where a
+# single `*` stops at a `/`.
+intent/st/**/info.md
+intent/st/**/acceptance.md
+intent/st/steel_threads.md
+intent/todo.md
