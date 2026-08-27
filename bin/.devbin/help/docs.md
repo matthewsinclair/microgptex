@@ -16,6 +16,6 @@ AGENTS.md is GENERATED. Never hand-edit it -- `intent agents sync` rewrites it f
 
 `docs treeindex` was REMOVED on 2026-08-25 (devbin#0032), along with the `docs.treeindex_dirs` key in bin/.devbin/config.yaml that fed it. Intent v3 retires `intent treeindex` with no replacement (executed at intent 861fa66c), so the option was one that lists cleanly, resolves cleanly and can never succeed once this estate moves to v3. It indexed lib and test -- the prose under docs/ was deliberately never in that list, since a code index is not what a documentation set wants. `docs all` is correspondingly one generator lighter, which is a real reduction rather than a rename.
 
-    bin/mg docs publish 20-concepts
-    bin/mg docs publish all --no-frontpage
-    bin/mg docs all
+    bin/devbin docs publish 20-concepts
+    bin/devbin docs publish all --no-frontpage
+    bin/devbin docs all
