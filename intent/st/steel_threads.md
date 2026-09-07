@@ -2,11 +2,11 @@
 
 An index of every steel thread in the project. A steel thread is a self-contained unit of work focused on implementing one piece of functionality.
 
-| ID     | Slug                            | Status    | Created    | Completed  |
-| ------ | ------------------------------- | --------- | ---------- | ---------- |
-| ST0003 | 20-ai-concepts-explainer-series | Completed | 2026-05-26 | 2026-05-26 |
-| ST0002 | microgptex-blog-post            | Completed | 2026-03-03 | 2026-05-26 |
-| ST0001 | initial-version                 | Completed | 2026-03-02 | 2026-05-26 |
+| ID     | Title                                           | Status    | Created    | Completed  |
+| ------ | ----------------------------------------------- | --------- | ---------- | ---------- |
+| ST0003 | 20 AI Concepts explainer series                 | Completed | 2026-05-26 | 2026-05-26 |
+| ST0002 | MicroGPTEx Blog Post Series                     | Completed | 2026-03-03 | 2026-05-26 |
+| ST0001 | MicroGPTEx — Functional Pedagogical GPT Trainer | Completed | 2026-03-02 | 2026-05-26 |
 
 ---
 
