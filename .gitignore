@@ -50,4 +50,6 @@ intent/.treeindex/
 intent/.cache/
 
 # D53: the event log lives in the store; its file form is produced by `intent export`.
-intent/events.jsonl
+
+# Intent's store snapshots and text exports: per-machine, never committed.
+intent/.backup/

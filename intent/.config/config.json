@@ -4,7 +4,7 @@
     "schedule": "daily"
   },
   "created": "2026-03-02",
-  "intent_version": "3.0.0",
+  "intent_version": "3.0.3",
   "languages": [
     "shell",
     "elixir"
