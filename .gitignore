@@ -53,3 +53,7 @@ intent/.cache/
 
 # Intent's store snapshots and text exports: per-machine, never committed.
 intent/.backup/
+
+# The canon gate's carriers are installed per clone by `intent claude upgrade --apply`
+# and never tracked: they are shipped canon, and a tracked copy would be a second home.
+.githooks/*.intent

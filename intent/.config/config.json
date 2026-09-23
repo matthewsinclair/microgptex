@@ -11,5 +11,9 @@
   ],
   "project_id": "4ae56689-c892-4f39-adb9-dc95cf4c30f2",
   "project_name": "microgptex",
-  "st_prefix": "ST"
+  "st_prefix": "ST",
+  "formatters": [
+    "markdown",
+    "elixir"
+  ]
 }
