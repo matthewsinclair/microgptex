@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Copyright (c) 2026 Geodica Ltd (geodica.com). All rights reserved.
-# Licence: LICENSE.md in devbin's lib directory (bin/.devbin/lib/ once vendored).
+# Copyright (c) 2026 Geodica Ltd (geodica.com)
+# Licence: MIT, in LICENSE.md in devbin's lib directory (bin/.devbin/lib/ once vendored).
 #
 # devbin -- the unified dev launcher.
 #
@@ -32,23 +32,34 @@ unset DEVBIN_IN_GATE
 # project root, so the launcher works from any CWD and through a symlink on
 # PATH. A surviving `bin/<alias> -> devbin` lands here too; `bin/<prj> -> devbin`
 # is retired and any still on disk is a project's to remove.
+#
+# A RELATIVE DIRNAME IS SPELLED FROM ./ before each cd (issue 0267): cd reads a
+# bare relative operand through an exported CDPATH before the current
+# directory, so `bin/devbin` typed at a project root under a CDPATH entry
+# holding a bin/ resolved into that entry and found no runtime. Helpers is not
+# sourced yet, so physical_dir cannot be asked, and these lines stay bash 3.2.
 _self="${BASH_SOURCE[0]}"
 while [ -L "$_self" ]; do
-  _dir="$(cd -P "$(dirname "$_self")" >/dev/null 2>&1 && pwd)"
+  _dir="$(dirname "$_self")"
+  case "$_dir" in /*) ;; *) _dir="./$_dir" ;; esac
+  _dir="$(cd -P "$_dir" >/dev/null 2>&1 && pwd)"
   _self="$(readlink "$_self")"
   case "$_self" in
     /*) ;;
     *) _self="$_dir/$_self" ;;
   esac
 done
-BIN_DIR="$(cd -P "$(dirname "$_self")" >/dev/null 2>&1 && pwd)"
+_dir="$(dirname "$_self")"
+case "$_dir" in /*) ;; *) _dir="./$_dir" ;; esac
+BIN_DIR="$(cd -P "$_dir" >/dev/null 2>&1 && pwd)"
 PROJECT_ROOT="$(cd "$BIN_DIR/.." >/dev/null 2>&1 && pwd)"
 DEVBIN_DIR="$BIN_DIR/.devbin"
 unset _self _dir
 
 # The runtime is normally vendored into the project at bin/.devbin/lib. The
 # fallback to the checkout's own lib/ is what lets Devbin run ITSELF from its
-# repo without installing into itself (design D12) -- the dogfooding case.
+# repo without installing into itself -- devbin uses devbin, the dogfooding
+# case.
 if [ -d "$DEVBIN_DIR/lib" ]; then
   DEVBIN_LIB="$DEVBIN_DIR/lib"
 elif [ -d "$PROJECT_ROOT/lib" ]; then
@@ -73,16 +84,16 @@ require_path_bash_floor
 # ITS OWN project from wherever you happen to be standing -- and every command
 # then cds to that root (lib/resolve, lib/gatecmd).
 #
-# MEASURED 2026-08-27, and the help listing was the harmless half. Standing in
-# a project with no devbin installed, a bare `devbin` resolved through PATH to
-# a DIFFERENT estate's launcher and printed that estate's catalogue at rc 0.
+# MEASURED, and the help listing was the harmless half. Standing in a project
+# with no devbin installed, a bare `devbin` resolved through PATH to a
+# DIFFERENT project's launcher and printed that project's catalogue at rc 0.
 # The same resolution puts `clean --force` -- which walks PROJECT_ROOT with
 # `find` -- on a tree the caller never named and cannot see in the output.
 #
-# `install` IS THE ONE EXEMPTION, and it is exempt by definition rather than by
+# `install` IS EXEMPT, and by definition rather than by
 # concession: its target is `--into <dir>`, defaulting to the CURRENT
-# directory, so acting outside its own tree is the entire job. Every other
-# command writes to or reports on PROJECT_ROOT -- `upgrade` and `vendor`
+# directory, so acting outside its own tree is the entire job. Every command
+# not exempt below writes to or reports on PROJECT_ROOT -- `upgrade` and `vendor`
 # included, whose `--from` names a SOURCE and not a target. Reading that `--from`
 # as a target is what first sized this guard at four exemptions, so it is
 # written down here rather than left to be re-derived.
@@ -91,12 +102,15 @@ require_path_bash_floor
 # a flag anything can set, and the suite is fixed by standing in the project
 # (tests/lib/test_helper.bash: devbin_run) rather than by an escape hatch.
 case "${1:-}" in
-  # TWO EXEMPTIONS, BOTH BY DEFINITION RATHER THAN BY CONCESSION.
+  # THE EXEMPTIONS, EACH BY DEFINITION RATHER THAN BY CONCESSION.
   #   install     -- its target is `--into <dir>`, defaulting to the CURRENT
   #                  directory, so acting outside its own tree IS the job.
   #   shell-init  -- emits a shell function to stdout. It writes nothing, reads
   #                  only its own project's install.prefix (issue 0125), and is
   #                  run from a shell rc where the cwd is $HOME by definition.
+  #   use         -- points or removes the machine's one link,
+  #                  $HOME/.local/bin/devbin (issue 0213). It writes nothing in
+  #                  any project, so there is no project for the guard to protect.
   # Everything else writes to or reports on PROJECT_ROOT, `upgrade` and `vendor`
   # included -- their `--from` names a SOURCE, not a target.
   #   -v/--version/version, and the same behind the framework word `devbin`
@@ -112,7 +126,7 @@ case "${1:-}" in
   # are guarded like any other writing verb. The list names what may PASS, so a
   # writing sub-command added later is guarded by default. `-v`, `--version`
   # and `devbin version` only report, whatever follows them.
-  install | shell-init | -v | --version) _devbin_wrong_tree_check=no ;;
+  install | shell-init | use | -v | --version) _devbin_wrong_tree_check=no ;;
   version)
     case "${2:-}" in
       "" | show | check | -h | --help) _devbin_wrong_tree_check=no ;;
@@ -130,15 +144,15 @@ esac
 # design. Without this, the answer was "refusing to run -- this is not your
 # current project", naming the machine install as the project it belongs to,
 # which is both confusing and false. The install-tree refusal says what is
-# actually true and names `install --into` and `upgrade --from`.
+# actually true and names `install --into` and `upgrade` (install_remedies).
 #
-# The manifest line is read through `manifest_field`. It was an inline grep while
-# this guard ran before lib/helpers was sourced; helpers now loads first, for the
-# floor (issue 0076), so the one manifest reader is available and a second one
-# here would be the copy Highlander forbids. No manifest reads as empty, which
-# is not an install.
+# Whether the tree is an install is is_install_tree's answer (issue 0262). The
+# manifest line was an inline grep while this guard ran before lib/helpers was
+# sourced; helpers now loads first, for the floor (issue 0076), so the one
+# predicate is available and a second reading here would be the copy Highlander
+# forbids. No manifest reads as no install.
 if [ "$_devbin_wrong_tree_check" = yes ] &&
-  [ "$(manifest_field "$PROJECT_ROOT" kind)" = install ]; then
+  is_install_tree "$PROJECT_ROOT"; then
   _devbin_wrong_tree_check=no
 fi
 if [ "$_devbin_wrong_tree_check" = yes ]; then
@@ -189,11 +203,14 @@ unset _devbin_wrong_tree_check
 #
 # A project without a config wants `install`. An INSTALL TREE without a config is
 # working exactly as designed -- the absent project half is what makes it an
-# install (D27, D33) -- and telling its reader to run `install` is advice that
+# install -- and telling its reader to run `install` is advice that
 # would turn the machine install into a project. The manifest's `kind:` line is
-# read rather than the absence being inferred, which is why that line exists.
+# read rather than the absence being inferred, which is why that line exists,
+# and _devbin_install_tree carries the answer down to where DEVBIN_INVOKE is set.
+_devbin_install_tree=no
 if [ ! -f "$DEVBIN_DIR/config.yaml" ]; then
-  if [ "$(manifest_field "$PROJECT_ROOT" kind 2>/dev/null || true)" = install ]; then
+  if is_install_tree "$PROJECT_ROOT"; then
+    _devbin_install_tree=yes
     # `install` IS EXEMPT, because SEEDING A PROJECT IS WHAT AN INSTALL IS FOR.
     #
     # The refusal below shipped without this exemption and made the install
@@ -201,7 +218,7 @@ if [ ! -f "$DEVBIN_DIR/config.yaml" ]; then
     # could not be seeded from it, and the only two paths that DID work were
     # both wrong. Installing from the dev tree delivers whatever that tree is
     # mid-development, which is generally AHEAD of the published install and so
-    # ahead of every estate. (No version numbers here on purpose: naming the
+    # ahead of every project. (No version numbers here on purpose: naming the
     # current one dates the comment, and documentation.bats refuses it.)
     # Installing from
     # another consumer delivers the right bytes and then records THAT
@@ -233,20 +250,33 @@ if [ ! -f "$DEVBIN_DIR/config.yaml" ]; then
     # reads a project's VERSION file and its declared sidecars; in an install
     # there is neither, so routing to it would produce `unknown` from a tree
     # that knows the answer perfectly well -- the manifest records it. The
-    # framework word `devbin` is stripped first so all four spellings a user tried
-    # land here: `version`, `--version`, `devbin version`, `devbin --version`.
+    # framework word `devbin` is stripped first so every spelling a user tried
+    # lands here: `-v`, `--version` and `version`, alone or behind `devbin`.
     _devbin_vq="${1:-}"
     if [ "$_devbin_vq" = devbin ]; then _devbin_vq="${2:-}"; fi
     case "$_devbin_vq" in
       -v | --version | version)
-        printf 'devbin %s (%s)\n  install: %s\n' \
-          "$(manifest_field "$PROJECT_ROOT" devbin_version 2>/dev/null || printf 'unknown')" \
-          "$(manifest_field "$PROJECT_ROOT" source_commit 2>/dev/null || printf 'unrecorded')" \
-          "$PROJECT_ROOT"
+        # The tree line, T4 of docs/dev-opt-brew.md (issue 0213).
+        devbin_tree_line "$PROJECT_ROOT"
         exit 0
         ;;
     esac
     unset _devbin_vq
+
+    # HELP IS AN ANSWER ABOUT DEVBIN TOO, AND THE INSTALL'S OWN (issue 0251). A
+    # bare devbin, -h, --help, help, help --why and help install were each
+    # refused with exit 5, so nobody could read how to seed a project before
+    # seeding one, and an explicit -h exits 0 (docs/authoring-commands.md). install_help
+    # (lib/help) answers from devbin's own pages and catalogue, under a line
+    # saying what this tree is, since an install has no project config for a
+    # project's help to read.
+    case "${1:-}" in
+      "" | -h | --help | help)
+        [ "${1:-}" != help ] || shift
+        install_help "$@"
+        exit $?
+        ;;
+    esac
 
     # `shell-init` is exempt for the same reason the wrong-tree guard exempts it:
     # it emits a shell function to stdout and writes nothing, and from an
@@ -254,20 +284,29 @@ if [ ! -f "$DEVBIN_DIR/config.yaml" ]; then
     # first cut, and it was the one verb a user needed from the install --
     # regenerating `dvb` so the fallback to the install exists at all. An
     # install that cannot emit the function that finds it is a bootstrap that
-    # cannot bootstrap.
+    # cannot bootstrap. `use` is exempt because the keg on PATH is where a
+    # brew-only machine runs it: `use brew` and a bare `use` work from any tree,
+    # and lib/cmd/use refuses `use dev` and `use opt` outside the checkout
+    # (issue 0213). `devbin` is exempt in its help forms as the framework's own
+    # help, the one thing an install can say about itself, which lib/cmd/devbin
+    # says for an install as such (issue 0251). Its other forms speak of a
+    # project's templates and upgrades, so they are refused like any other.
     case "${1:-}" in
-      install | shell-init) _devbin_install_ok=yes ;;
+      install | shell-init | use) _devbin_install_ok=yes ;;
+      devbin)
+        case "${2:-}" in
+          "" | help | -h | --help) _devbin_install_ok=yes ;;
+          *) _devbin_install_ok=no ;;
+        esac
+        ;;
       *) _devbin_install_ok=no ;;
     esac
     if [ "$_devbin_install_ok" = no ]; then
       {
         printf 'devbin: this is a devbin INSTALL, not a project -- it cannot be run from.\n\n'
         printf '  installed at:  %s\n' "$PROJECT_ROOT"
-        printf '  vendored from: %s\n' "$(manifest_field "$PROJECT_ROOT" source_commit 2>/dev/null || printf 'unrecorded')"
-        printf '\nTo SEED a project that has no devbin yet:\n'
-        printf '  %s/bin/devbin install --into <your project>\n' "$(install_named_root "$PROJECT_ROOT")"
-        printf '\nTo UPGRADE a project that already has one:\n'
-        vendor_from_hint "$PROJECT_ROOT"
+        printf '  vendored from: %s\n\n' "$(manifest_field "$PROJECT_ROOT" source_commit 2>/dev/null || printf 'unrecorded')"
+        install_remedies "$PROJECT_ROOT"
       } >&2
       # 5, ITS OWN CODE (issue 0099). It exited 3, which the contract reserves
       # for "resolves but not implemented", so a test asserting that refusal was
@@ -276,6 +315,17 @@ if [ ! -f "$DEVBIN_DIR/config.yaml" ]; then
     fi
     unset _devbin_install_ok
   else
+    # A MANIFEST THAT CANNOT BE READ SAYS NOTHING ABOUT THE TREE (issue 0282).
+    # is_install_tree reads one as no install, so the advice below told an
+    # install to run `install`, which would make it a project. Asked through
+    # manifest_readable, the one reader of whether a manifest reads (0144),
+    # whose own line is left out: one refusal, naming the manifest, never a
+    # second wording of it or a tool's message beside it (0215).
+    # shellcheck source=lib/install
+    . "$DEVBIN_LIB/install"
+    if ! manifest_readable "$PROJECT_ROOT" 2>/dev/null; then
+      die "cannot read the manifest $(manifest_path "$PROJECT_ROOT"), so devbin cannot tell whether this tree is an install or a project -- let devbin read it, or reinstall"
+    fi
     die "no config at $DEVBIN_DIR/config.yaml (try: devbin install)"
   fi
 else
@@ -399,7 +449,7 @@ unset _devbin_referent_cmd
 # segment" -- and `lib/runlog` says the opposite four hundred lines away, in as
 # many words: ORDERING IS BY MTIME, NEVER BY NAME, and the -SS suffix sorts
 # lexically BEFORE the plain stamp while being newer, which is why `-nt` is
-# used. Driven 2026-09-03 with the two orders opposed: the older NAME with the
+# used. Driven with the two orders opposed: the older NAME with the
 # newer mtime came back first. `lib/runlog` owns this fact; this file no longer
 # restates it. The ladder stays because it is a COLLISION device and the names
 # are read by humans -- neither of which is an ordering claim.
@@ -426,11 +476,11 @@ unset _devbin_referent_cmd
 # gate's nested witness runs as that gate (measured).
 #
 # THE BOUNDARY, NOT THE FLAG. The flag is inherited, so keying on it alone gave
-# every child of a witness run a fresh id (critic-shell). DEVBIN_RUN_WITNESS
-# carries whether the PARENT was a witness. Inside a witness run a child that
+# every child of a witness run a fresh id. DEVBIN_RUN_WITNESS carries whether
+# the PARENT was a witness. Inside a witness run a child that
 # inherited the flag and one started as a witness on purpose are the same
 # environment, so both are part of that run. The seal ledger reads this same
-# answer through the id (lib/runlog, record_seal): one definition, two readers.
+# answer through the id (lib/runlog, record_seal): one definition, all readers.
 #
 # ACCEPTED, NOT OVERLOOKED: `devbin dormancy` runs both of its legs as witness
 # runs, so each carries its own id rather than dormancy's. Those legs are
@@ -466,7 +516,7 @@ DEVBIN_NAME="$(cfg_get project.name devbin)"
 # demo_cli's is `demo.cli`, so `<name>.cli` names a task neither of them has.
 #
 # EXPORTED rather than looked up, because lib/helpers reads no config by rule
-# (D15) and a handler is a separate process -- the same reason DEVBIN_NAME
+# and a handler is a separate process -- the same reason DEVBIN_NAME
 # crosses this way. One derivation, here, read by both built-ins.
 #
 # `cli` alone could have used a `run:` override, which is what demo_config did.
@@ -495,13 +545,21 @@ fi
 # resolve. Computed HERE because this is the one place that still holds the
 # caller's own cwd: lib/resolve and lib/gatecmd cd to PROJECT_ROOT before any
 # handler runs, so a handler asking the same question gets the wrong answer.
+#
+# AN INSTALL IS NAMED AS ITS READER TYPES IT (issue 0252). The guard above
+# marks one (_devbin_install_tree) and lets it through for install, shell-init
+# and use, and it runs from its resolved path: in a Homebrew keg that is
+# Cellar/devbin/<version>, which the next brew upgrade deletes, so a hint
+# naming it would be a line that stops working.
 _devbin_cwd_now="$(pwd -P 2>/dev/null || pwd)"
-if [ "$_devbin_cwd_now" = "$PROJECT_ROOT" ]; then
+if [ "$_devbin_install_tree" = yes ]; then
+  DEVBIN_INVOKE="$(launcher_shown "$PROJECT_ROOT")"
+elif [ "$_devbin_cwd_now" = "$PROJECT_ROOT" ]; then
   DEVBIN_INVOKE="bin/devbin"
 else
   DEVBIN_INVOKE="$PROJECT_ROOT/bin/devbin"
 fi
-unset _devbin_cwd_now
+unset _devbin_cwd_now _devbin_install_tree
 export DEVBIN_NAME DEVBIN_INVOKE
 # Exported under the project's own name so handlers ported from the corpus keep
 # reading the variable they already expect (<NAME>_ROOT, eg DEMO_ROOT).
@@ -509,19 +567,31 @@ export DEVBIN_NAME DEVBIN_INVOKE
 # eval would let a config file that can name a variable also run code.
 export "$PROJECT_ROOT_VAR=$PROJECT_ROOT"
 # And its NAME beside it, so a reader that must re-point the root variable -- a
-# notes command answering for a root that is not this tree (ST0007 D39) -- never
+# notes command answering for a root that is not this tree (ST0007) -- never
 # re-derives project.root_var's default. The name has one home: the lines above.
 export DEVBIN_ROOT_VAR="$PROJECT_ROOT_VAR"
 
 # Where read_version looks. Exported because handlers get it from lib/helpers,
 # which cannot read config (see the layering note in that file).
-DEVBIN_VERSION_FILE="$(cfg_get project.version_from VERSION)"
+DEVBIN_VERSION_FILE="$(cfg_version_from)"
 export DEVBIN_VERSION_FILE
+
+# The cargo workspace root, as written, for cargo_root (lib/helpers), the one
+# owner of the directory devbin's catalogue cargo lines run in (issue 0225).
+# Exported ONLY when config declares it, and unset otherwise, so an absent
+# setting is told apart from an empty one, and a value inherited from another
+# project's devbin never stands in for this one's.
+unset DEVBIN_CARGO_ROOT
+if cfg_has project.cargo_root; then
+  DEVBIN_CARGO_ROOT="$(cfg_get project.cargo_root)"
+  export DEVBIN_CARGO_ROOT
+fi
 
 # The files that MIRROR the version, newline-separated. Exported for the same
 # reason as the line above: lib/cmd/version is a separate process and cannot
 # read config. Config names the files; lib/cmd/version holds the recipe for
-# rewriting each kind, which is the D1 split `read_version` already follows.
+# rewriting each kind, which is the name-not-recipe split `read_version`
+# already follows.
 DEVBIN_VERSION_SIDECARS="$(
   cfg_list project.version_sidecars | while IFS= read -r i; do
     [ -n "$i" ] && cfg_get "project.version_sidecars.$i"
@@ -537,14 +607,14 @@ export DEVBIN_VERSION_SIDECARS
 # `check format` needs it: the formatter has one arm per language and the gate
 # has to verify each arm the project actually declares (issue 0003). Derived by
 # project_languages (lib/resolve), the same derivation project_speaks reads --
-# one source, per Highlander (delta review, finding 11).
+# one source, per Highlander.
 DEVBIN_LANGUAGES="$(project_languages)"
 export DEVBIN_LANGUAGES
 
 
 # THE VENDORED RUNTIME MAY HAVE MOVED ON, OR BEHIND. Once a day, on a terminal only, to
 # stderr, never fatal -- see devbin_update_notice in lib/helpers for why each of
-# those four is load-bearing. Placed here so it precedes every command including
+# those is load-bearing. Placed here so it precedes every command including
 # help, and after config so DEVBIN_NAME is set for the remediation line.
 devbin_update_notice "$PROJECT_ROOT"
 
@@ -555,7 +625,8 @@ devbin_update_notice "$PROJECT_ROOT"
 # about upgrades before running somebody's tests is issue 0058 wearing a
 # friendlier face. The dispatcher cannot tell whether the command it is about to
 # run is a gate -- that is decided inside the handler, after dispatch -- so the
-# offer is scoped to the two invocations that are never gates BY CONSTRUCTION.
+# offer is scoped to the invocations that are never gates BY CONSTRUCTION: the
+# bare invocation, and `doctor`.
 #
 # The NOTICE above is unconditional and this is not. Everyone hears; only
 # someone looking at devbin itself gets asked.
@@ -594,6 +665,32 @@ case "$command" in
     ;;
 esac
 
+# A COMMAND NOT OFFERED HERE ANSWERS ITS OWN -h AND --help AS `help <cmd>`
+# DOES (issue 0271), since the flag is what a reader reaches for first: the
+# not-offered line and the page at exit 0 where unoffered_page has one, and
+# help's refusal otherwise. help_main is that answer, asked rather than copied.
+# - IN ANY POSITION, as an offered command and help_main both read it, so
+#   `release sub --help` is help too.
+# - BEFORE parse_common_opts, for help's own reason above: `release --help --env
+#   nope` prints the page rather than refusing the value. Activation reads
+#   config and the tree, never what parse_common_opts exports.
+# - Only where command_unavailable_reason has a reason, which is where help
+#   says why too. An offered command reads its own flag, and an unknown one keeps
+#   the dispatcher's refusal below. The activity check runs only once a flag is
+#   seen, so no other dispatch pays for it.
+for _devbin_arg in "$@"; do
+  case "$_devbin_arg" in
+    -h | --help)
+      if ! command_active "$command" && command_unavailable_reason "$command" >/dev/null; then
+        help_main "$command"
+        exit $?
+      fi
+      break
+      ;;
+  esac
+done
+unset _devbin_arg
+
 # Shared options are parsed ONCE, here, and exported. In the corpus every
 # command script called parse_common_opts itself -- eleven call sites per
 # project, forty-odd across the four. Handlers are separate processes, so the
@@ -601,13 +698,13 @@ esac
 # handler receives on its command line is only what devbin did not recognise.
 parse_common_opts "$command" "$@"
 # Guarded expansion: a bash 3.2 idiom (an empty array under `set -u` aborted
-# there; design D9, since reversed by issue 0022). Harmless under the >= 5
-# floor and kept. See parse_common_opts in lib/resolve.
+# there, back when devbin supported it, which issue 0022 ended). Harmless under
+# the >= 5 floor and kept. See parse_common_opts in lib/resolve.
 set -- "${DEVBIN_ARGS[@]+"${DEVBIN_ARGS[@]}"}"
 
 # The ACTIVE option set for THE COMMAND BEING RUN, for its own usage line
 # (issue 0007, option 1). The catalogue is the MENU; what resolves here is
-# decided by activation (the D11 language axis, config enabled:, declared
+# decided by activation (language scoping, config enabled:, declared
 # options), and command_options IS that derivation -- the same list `all` fans
 # over and the global help renders. It needs config + resolve, which a gate
 # handler deliberately cannot source, so the dispatcher exports the result.
@@ -636,8 +733,8 @@ esac
 # above) and the catalogue is only HALF the answer: config can switch an arm
 # off (`enabled: false`) or replace what it runs (`run:`), and a gate deriving
 # its check from the catalogue alone then verifies a command line the
-# formatter no longer runs -- same name, same green, different fact (delta
-# review, findings 5 and 10). Languages with no fmt arm anywhere get no entry.
+# formatter no longer runs -- same name, same green, different fact. Languages
+# with no fmt arm anywhere get no entry.
 #
 #   <lang>=builtin      the catalogue governs; the gate derives the check form
 #   <lang>=overridden   the project runs `fmt <lang>` -- config's own `run:` for
@@ -682,11 +779,27 @@ case "$command" in
 esac
 
 command_active "$command" || {
+  # `use` IN A PROJECT IS ITS OWN REFUSAL, with its own code (issue 0213): devbin
+  # ships it and nothing in the project's config turned it off; it runs only in
+  # devbin's own trees (devbin_tree_refusal, lib/resolve), so a test asserting
+  # this refusal is never satisfied by the 2 below. `use --help` and `use -h`
+  # never reach it: they answer as `help use` does, refused at exit 2 (issue
+  # 0271, above parse_common_opts).
+  if reason="$(devbin_tree_refusal "$command")"; then
+    warn "$reason"
+    exit 6
+  fi
   # Distinguish "never heard of it" from "switched off here". A command that is
   # silently absent is indistinguishable from one that is broken, and the second
-  # message saves the reader a trip through the config (D11).
+  # message saves the reader a trip through the config.
   if reason="$(command_unavailable_reason "$command")"; then
-    warn "'$DEVBIN_INVOKE $command' is not available here: $reason"
+    # And where help prints its page, the refusal's one line says how to read it
+    # (issue 0271): unoffered_page decides, as it does for help.
+    if unoffered_page "$command" >/dev/null; then
+      warn "'$DEVBIN_INVOKE $command' is not available here: $reason (its page: $DEVBIN_INVOKE help $command)"
+    else
+      warn "'$DEVBIN_INVOKE $command' is not available here: $reason"
+    fi
   elif cfg_has "commands.$command.enabled" || [ -n "$(cfg_list "commands.$command")" ]; then
     warn "command '$command' is not active in this project (see: $DEVBIN_INVOKE help)"
   else
@@ -716,7 +829,7 @@ fi
 # says where `all` is devbin's, and why it is refused over a command-level run:
 # with no options.
 route="$(arg_route "$command" "$@")" || die "devbin defect: arg_route gave no answer for '$command'"
-# THE ROUTE'S WORD, for the three routes that name one (all, inactive, option):
+# THE ROUTE'S WORD, for the routes that name one (all, inactive, option):
 # the argument route_word_at names, the same one arg_route asked, taken out,
 # with everything before and after it kept in order (`test --purge all`,
 # `rq --purge one`).
@@ -737,8 +850,8 @@ case "$route" in
     # Splitting these produced two different answers to one question: a
     # declared-then-disabled option said "is not active in this project" and
     # exited 1, while an identical built-in said "it is disabled in <file>" and
-    # exited 2. D11 asks for deactivation to be visible, and visible has to mean
-    # the same thing wherever the option came from.
+    # exited 2. The activation rule asks for deactivation to be visible, and
+    # visible has to mean the same thing wherever the option came from.
     if reason="$(option_unavailable_reason "$command" "$word")"; then
       warn "'$DEVBIN_INVOKE $command $word' is not available here: $reason"
     else
@@ -756,8 +869,8 @@ case "$route" in
     # config-mapped handler is not the command name -- bin/.devbin/cmd/myls serving
     # `ls` would otherwise have no way to know it was called as `ls`. Telling it
     # explicitly costs one export and keeps identity coming from the dispatcher
-    # rather than from a filename, which is the same rule D2 applies to the
-    # project name.
+    # rather than from a filename, which is the same rule the dispatcher applies
+    # to the project name.
     export DEVBIN_COMMAND="$command"
     exec_handler "$handler" "$@"
     ;;

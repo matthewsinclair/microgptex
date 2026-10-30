@@ -3,14 +3,16 @@
 # lib/infra.check -- the DNS and mail legs of `infra check` (ST0003 WP-02).
 #
 # Sourced, never executed. It compares a loaded profile against live
-# authoritative DNS and produces a verdict in FOUR channels, not two.
+# authoritative DNS and produces a verdict in separate channels, not a
+# pass/fail pair.
 #
 #   OK      measured, and it matches
 #   DRIFT   measured, and it differs -- the estate is wrong
 #   ERROR   NOT MEASURED -- the instrument failed, and nothing is known
 #   BLIND   not machine-checkable at all, declared and named every run
+#   MANUAL  declared under `manual:`, NEVER verified, named every run
 #
-# WHY FOUR AND NOT TWO, which is the whole design. Every failure this thread
+# WHY SEPARATE CHANNELS, which is the whole design. Every failure this thread
 # was built to catch is a control that could only report success. Fold ERROR
 # into OK and an unreachable nameserver reads as a clean domain; fold it into
 # DRIFT and the operator chases an estate fault that is really a network fault.
@@ -49,7 +51,7 @@
 [ -n "${_DEVBIN_INFRA_CHECK_LOADED:-}" ] && return 0
 _DEVBIN_INFRA_CHECK_LOADED=1
 
-# The four channels. Newline-delimited `<fqdn><TAB><facet><TAB><detail>`.
+# The channels. Newline-delimited `<fqdn><TAB><facet><TAB><detail>`.
 _IC_OK=0
 _IC_DRIFT=""
 _IC_ERROR=""
@@ -104,12 +106,12 @@ _ic_unread() {
 }
 
 # infra_check_domain <handle> <fqdn> -- every DNS and mail assertion for one
-# domain. Prints nothing; accumulates into the four channels.
+# domain. Prints nothing; accumulates into the channels.
 #
 # THE AUTHORITY READ GATES EVERYTHING. Each later read runs THROUGH it, so a
-# domain whose nameservers cannot be found is one ERROR rather than six DRIFTs:
-# reporting "no MX, no SPF, no DMARC" for a domain nobody could reach is a
-# verdict about an estate that was never read.
+# domain whose nameservers cannot be found is one ERROR rather than a DRIFT
+# for each record: reporting "no MX, no SPF, no DMARC" for a domain nobody
+# could reach is a verdict about an estate that was never read.
 infra_check_domain() {
   local handle="$1" fqdn="$2" ns mail ttl want_dmarc policy rua sp
   local mx spf dmarc_txt sender spf_rec n k v
@@ -170,10 +172,10 @@ EOF
     # and it stays silent until the first message flows. It is the sharpest
     # single check in this leg.
     for sender in $(infra_domain_senders "$handle"); do
-      # THE UNDEFINED-SENDER BRANCH WAS REMOVED HERE ON 2026-09-08, and the
-      # reason is that it could no longer go red. `infra_validate_profile` now
-      # refuses a domain naming a sender the profile never defines, before any
-      # network call, so this arm was unreachable through every path a caller
+      # THE UNDEFINED-SENDER BRANCH WAS REMOVED HERE, and the reason is that
+      # it could no longer go red. `infra_validate_profile` now refuses a
+      # domain naming a sender the profile never defines, before any network
+      # call, so this arm was unreachable through every path a caller
       # has -- and a check with no reachable red state carries zero bits while
       # still reading like coverage. It was also a second home for one rule:
       # the parse-time refusal and this report said the same thing in two
@@ -199,11 +201,11 @@ EOF
       if [ -z "$dmarc_txt" ]; then
         # `if`, NEVER `[ -n "$x" ] && cmd`. As the last statement of a branch
         # that form returns 1 when the test is false, and `set -e` kills the
-        # run before a single line is printed. Measured 2026-09-07: five arms
-        # red with EMPTY output and rc 1, every one a profile with no `dmarc:`
-        # block. Same trap as `die_install_prefix_unset` earlier the same day,
-        # which is the point -- knowing a rule and writing it down does not
-        # stop you reproducing it hours later in a different file.
+        # run before a single line is printed. Measured: five arms red with
+        # EMPTY output and rc 1, every one a profile with no `dmarc:` block.
+        # Same trap as `die_install_prefix_unset`, which is the point -- knowing
+        # a rule and writing it down does not stop you reproducing it later in
+        # a different file.
         if [ -n "$policy" ]; then
           _ic_drift "$fqdn" "dmarc" "profile declares \`policy: $policy\` and there is NO _dmarc record"
         fi

@@ -1,7 +1,7 @@
     bin/devbin clean <option> [--dry-run] [--force-blocked | --force] [--refuse-partial]
     bin/devbin clean all [--dry-run] [--force-blocked | --force] [--refuse-partial]
 
-Remove the build trees this project can regenerate. Each option finds its trees by walking the whole project, prints every one it finds with its size, the ones it will not touch included, and unless told otherwise asks before it removes anything. An option is offered when `project.languages` declares its language, so a project that declares none of these three, and adds no option of its own, is not offered `clean` at all.
+Remove the build trees this project can regenerate. Each option finds its trees by walking the whole project, prints every one it finds with its size, the ones it will not touch included, and unless told otherwise asks before it removes anything. An option is offered when `project.languages` declares its language, so a project that declares none of these languages, and adds no option of its own, is not offered `clean` at all.
 
     rust      rust    cargo target/ trees, release/ included
     elixir    elixir  _build/ trees; the sources under deps/ stay
@@ -86,10 +86,10 @@ In `bin/.devbin/config.yaml`:
             run: scripts/clean-assets
             log: true
 
-A new option is offered whatever the languages, and is sealed only if it declares `log:`. `clean all` passes each flag it is given, `--dry-run`, `--force`, `--force-blocked` and `--refuse-partial`, on to every option it runs, so an option a project adds must honour all four, or refuse the ones it cannot. A `run:` on one of devbin's options replaces that option's code entirely: none of the checks, refusals or prompts above run for it.
+A new option is offered whatever the languages, and is sealed only if it declares `log:`. `clean all` passes each flag it is given, `--dry-run`, `--force`, `--force-blocked` and `--refuse-partial`, on to every option it runs, so an option a project adds must honour each of them, or refuse the ones it cannot. A `run:` on one of devbin's options replaces that option's code entirely: none of the checks, refusals or prompts above run for it.
 
 A handler at `bin/.devbin/cmd/clean` replaces the whole command, `all` included, and `bin/devbin help clean` no longer shows this page there.
 
 ## What is active here
 
-Below this page, `bin/devbin help clean` prints an "In this project:" block: where the command and each active option resolve from, then the options not offered here and why.
+Where `clean` is offered here, `bin/devbin help clean` prints an "In this project:" block below this page: where the command and each active option resolve from, then the options not offered here and why.

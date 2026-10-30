@@ -47,7 +47,7 @@ EOF
 #
 # Beside the state rather than in a legend at the bottom, because the reader's
 # actual question is "so do I run upgrade or not" and a legend makes them hold
-# seven words in their head to find out.
+# every state's word in their head to find out.
 _explain() {
   case "$1" in
     level) printf 'matches the source\n' ;;
@@ -89,10 +89,10 @@ main() {
   dstroot="${PROJECT_ROOT:?}"
 
   is_devbin_installed "$dstroot" || {
-    # The same two shapes upgrade distinguishes, and for the same reason: the
-    # D12 checkout runs its own lib/ in place, so there is no vendored copy to
-    # compare and pointing it at `install --into` would name the command install
-    # refuses.
+    # The same shapes upgrade distinguishes, and for the same reason: the
+    # devbin source checkout runs its own lib/ in place, so there is no vendored
+    # copy to compare and pointing it at `install --into` would name the command
+    # install refuses.
     if is_devbin_source "$dstroot"; then
       warn "devbin is not installed here -- this is the devbin source checkout, which runs lib/ in place"
       warn "  there is nothing vendored to compare; a project installed FROM it can ask its own $DEVBIN_INVOKE vendor"
@@ -122,11 +122,14 @@ main() {
   fi
 
   if [ -n "$from" ]; then
-    srcroot="$(cd "$from" 2>/dev/null && pwd)" || die "no such directory: $from"
+    # Read by logical_dir, from the current directory alone (issue 0267): a
+    # bare cd found a relative name through CDPATH and read `-` as $OLDPWD,
+    # and its printed line went into the source.
+    logical_dir "$from" srcroot 2>/dev/null || die "no such directory: $from"
   else
     srcroot="$(manifest_source "$dstroot" 2>/dev/null || true)"
     [ -n "$srcroot" ] ||
-      die "$(source_unplaced_why "$dstroot") -- name one with --from <dir>"
+      die "$(source_unplaced_why "$dstroot") -- $(source_unplaced_fix "$dstroot" "$PROJECT_ROOT")"
   fi
 
   is_devbin_source "$srcroot" || {
