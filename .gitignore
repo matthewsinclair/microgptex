@@ -57,3 +57,12 @@ intent/.backup/
 # The canon gate's carriers are installed per clone by `intent claude upgrade --apply`
 # and never tracked: they are shipped canon, and a tracked copy would be a second home.
 .githooks/*.intent
+
+# An Intent view of many records: every clone renders its own from the store, so none is committed.
+intent/st/steel_threads.md
+
+# An Intent view of many records: every clone renders its own from the store, so none is committed.
+intent/todo.md
+
+# An Intent view of many records: every clone renders its own from the store, so none is committed.
+intent/st/*/acceptance.md

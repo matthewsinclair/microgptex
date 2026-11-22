@@ -1,0 +1,6 @@
+{
+  "path": "tasks.md",
+  "text": "# Tasks - ST0002: MicroGPTEx Blog Post Series\n\n## Status: Complete\n\nAll tasks moved to [done.md](done.md).\n\n## Remaining\n\nNo outstanding tasks.\n\n## Dependencies\n\n- WP-01 → WP-02 → WP-03 → WP-04 → WP-05 (sequential, each builds on previous)\n- All WPs depend on ST0001 being complete (the codebase the blog explains)\n",
+  "bytes": 323,
+  "sha256": "245e7a5a6cb4db3f7a6f3eaf394c40a3dc9ea0c187acf0dcba2b0f03aef71715"
+}

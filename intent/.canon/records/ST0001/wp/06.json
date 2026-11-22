@@ -1,0 +1,9 @@
+{
+  "id": "06",
+  "title": "Rich Moduledoc Text",
+  "scope": "S",
+  "status": "done",
+  "objective": "Add rich, detailed `@moduledoc` text to all 9 modules explaining both the GPT algorithm concepts and the Elixir idioms used. Dual-audience documentation: ML practitioners learning Elixir and Elixir developers learning ML.",
+  "body": "## Deliverables\n\n- Enhanced `@moduledoc` on each of the 9 modules in `lib/microgptex.ex`\n- Each moduledoc explains: what the module does in GPT terms, what Elixir idiom it demonstrates, and how it connects to the other modules\n\n## Acceptance Criteria\n\n- [ ] All 9 modules have rich `@moduledoc` text\n- [ ] Each moduledoc explains both GPT concepts and Elixir idioms\n- [ ] `mix compile` — 0 warnings\n- [ ] `mix credo --strict` — 0 issues\n\n## Dependencies\n\n- Depends on WP-05 (code must be stable before writing docs)",
+  "preamble": ""
+}

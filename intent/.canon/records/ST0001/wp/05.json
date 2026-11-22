@@ -1,0 +1,9 @@
+{
+  "id": "05",
+  "title": "Public Repo Polish",
+  "scope": "S",
+  "status": "done",
+  "objective": "Prepare the repository for public visibility: clean README, remove reference implementation files, clean up all internal references to removed files.",
+  "body": "## Deliverables\n\n- `README.md` — rewritten for public consumption with architecture overview, quick start, configuration table, how-it-works section, credits to Karpathy\n- Removed `intent/st/ST0001/eg/` directory (2 reference .exs files)\n- Updated steel thread docs to remove references to local example files\n\n## Changes Made\n\n| File                       | Change                                                                                |\n| -------------------------- | ------------------------------------------------------------------------------------- |\n| `README.md`                | Full rewrite — architecture diagram, quick start, config table, algorithm explanation |\n| `intent/st/ST0001/eg/`     | Deleted (microgpt_openai.exs, microgpt_claude.exs)                                    |\n| `intent/st/ST0001/impl.md` | References → Karpathy's MicroGPT repo                                                 |\n| `intent/st/ST0001/info.md` | Removed reference to local example files                                              |\n\n## Acceptance Criteria\n\n- [x] README is clean, professional, suitable for public repo\n- [x] No `eg/` directory in source tree\n- [x] No references to `eg/*.exs` files in repo\n- [x] Credits to Karpathy's original work preserved\n\n## Dependencies\n\n- Depends on WP-01 through WP-04",
+  "preamble": ""
+}
